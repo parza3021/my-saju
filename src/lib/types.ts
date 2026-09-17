@@ -52,3 +52,66 @@ export interface BirthInput {
   hour: number | null;
   minute: number;
 }
+
+export interface IljinFortune {
+  keyword: string;
+  summary: string;
+  good: string;
+  caution: string;
+}
+
+export interface DailyRelationNote {
+  type: "육합" | "충" | "원진";
+  polarity: "긍정" | "주의";
+  description: string;
+}
+
+export interface IljinResult {
+  date: { year: number; month: number; day: number; weekday: string; isToday: boolean };
+  gan: StemInfo;
+  zhi: BranchInfo;
+  shiShen: string;
+  fortune: IljinFortune;
+  relations: DailyRelationNote[];
+  elementNote: string;
+  level: "순조" | "보통" | "주의";
+}
+
+export interface WeekSummary {
+  start: { month: number; day: number; weekday: string };
+  end: { month: number; day: number; weekday: string };
+  counts: Record<IljinResult["level"], number>;
+  toneTitle: string;
+  toneDescription: string;
+  best: IljinResult | null;
+  worst: IljinResult | null;
+}
+
+export type BranchRelationType = "육합" | "삼합" | "반합" | "충" | "삼형" | "자형" | "형" | "원진";
+
+export interface BranchRef {
+  person: 1 | 2;
+  pillarLabel: Pillar["label"];
+  branch: BranchInfo;
+}
+
+export interface RelationHit {
+  type: BranchRelationType;
+  polarity: "긍정" | "주의";
+  branches: BranchRef[];
+  description: string;
+}
+
+export interface DayMasterRelation {
+  type: "상생" | "상극" | "비화";
+  description: string;
+}
+
+export interface GunghapResult {
+  person1: { name: string; saju: SajuResult; zodiac: ZodiacResult };
+  person2: { name: string; saju: SajuResult; zodiac: ZodiacResult };
+  dayMasterRelation: DayMasterRelation;
+  branchRelations: RelationHit[];
+  zodiacCompat: string;
+  summary: { positives: number; cautions: number };
+}

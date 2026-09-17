@@ -1,17 +1,33 @@
 import { DAY_MASTER_CONTENT } from "@/lib/content/dayMaster";
 import { SHI_SHEN_CONTENT } from "@/lib/content/shishen";
-import { SajuResult, ZodiacResult } from "@/lib/types";
+import { getSupplementWuxing } from "@/lib/iljin";
+import { IljinResult, SajuResult, WeekSummary, ZodiacResult } from "@/lib/types";
+import IljinCard from "./IljinCard";
 import PillarTable from "./PillarTable";
+import WeeklyFortune from "./WeeklyFortune";
 import WuxingBars from "./WuxingBars";
 import ZodiacCard from "./ZodiacCard";
 
 export default function ResultSection({
   saju,
   zodiac,
+  iljin,
+  weekly,
+  weekSummary,
+  selectedDate,
+  onSelectedDateChange,
+  onResetDate,
 }: {
   saju: SajuResult;
   zodiac: ZodiacResult;
+  iljin: IljinResult;
+  weekly: IljinResult[];
+  weekSummary: WeekSummary;
+  selectedDate: string;
+  onSelectedDateChange: (value: string) => void;
+  onResetDate: () => void;
 }) {
+  const supplement = getSupplementWuxing(saju);
   const dayMaster = DAY_MASTER_CONTENT[saju.dayMaster.hangul];
   const shishenInPillars = Array.from(
     new Set(
@@ -33,6 +49,40 @@ export default function ResultSection({
             </p>
           )}
         </div>
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <h2 className="text-sm font-medium text-white/50">
+            {iljin.date.isToday ? "오늘의 일진(日辰)" : "선택한 날의 일진(日辰)"}
+          </h2>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => onSelectedDateChange(e.target.value)}
+              className="rounded-lg bg-white/10 border border-white/10 px-3 py-1.5 text-sm text-white outline-none focus:border-amber-400 [color-scheme:dark]"
+            />
+            {!iljin.date.isToday && (
+              <button
+                type="button"
+                onClick={onResetDate}
+                className="rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1.5 text-sm text-white/70 transition-colors"
+              >
+                오늘로
+              </button>
+            )}
+          </div>
+        </div>
+        <IljinCard iljin={iljin} supplement={supplement} />
+      </section>
+
+      <section>
+        <h2 className="text-sm font-medium text-white/50 mb-3">
+          주간 운세 — {weekSummary.start.month}월 {weekSummary.start.day}일({weekSummary.start.weekday}) ~{" "}
+          {weekSummary.end.month}월 {weekSummary.end.day}일({weekSummary.end.weekday})
+        </h2>
+        <WeeklyFortune days={weekly} summary={weekSummary} />
       </section>
 
       <section>

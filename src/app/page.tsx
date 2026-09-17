@@ -1,8 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import BirthForm from "@/components/BirthForm";
 import ResultSection from "@/components/ResultSection";
+import SiteNav from "@/components/SiteNav";
+import {
+  calculateDailyFortune,
+  calculateWeeklyFortune,
+  parseDateInput,
+  summarizeWeek,
+  toDateInputValue,
+} from "@/lib/iljin";
 import { calculateSaju } from "@/lib/saju";
 import { BirthInput, SajuResult, ZodiacResult } from "@/lib/types";
 import { getZodiac } from "@/lib/zodiac";
@@ -10,8 +18,20 @@ import { getZodiac } from "@/lib/zodiac";
 export default function Home() {
   const [saju, setSaju] = useState<SajuResult | null>(null);
   const [zodiac, setZodiac] = useState<ZodiacResult | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => toDateInputValue(new Date()));
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+
+  const fortune = useMemo(() => {
+    if (!saju) return null;
+    const date = parseDateInput(selectedDate);
+    const weekly = calculateWeeklyFortune(saju, date);
+    return {
+      iljin: calculateDailyFortune(saju, date),
+      weekly,
+      weekSummary: summarizeWeek(weekly),
+    };
+  }, [saju, selectedDate]);
 
   function handleSubmit(input: BirthInput) {
     try {
@@ -32,6 +52,7 @@ export default function Home() {
 
   return (
     <main className="flex-1 px-4 py-16 sm:py-24">
+      <SiteNav active="saju" />
       <div className="max-w-3xl mx-auto text-center mb-12">
         <p className="text-amber-400 text-sm font-medium tracking-wide mb-3">
           정통 명리학 × 서양 점성술
@@ -51,9 +72,18 @@ export default function Home() {
         <p className="mt-6 text-center text-sm text-red-400">{error}</p>
       )}
 
-      {saju && zodiac && (
+      {saju && zodiac && fortune && (
         <div ref={resultRef} className="pt-16">
-          <ResultSection saju={saju} zodiac={zodiac} />
+          <ResultSection
+            saju={saju}
+            zodiac={zodiac}
+            iljin={fortune.iljin}
+            weekly={fortune.weekly}
+            weekSummary={fortune.weekSummary}
+            selectedDate={selectedDate}
+            onSelectedDateChange={setSelectedDate}
+            onResetDate={() => setSelectedDate(toDateInputValue(new Date()))}
+          />
         </div>
       )}
 

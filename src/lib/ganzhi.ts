@@ -71,3 +71,28 @@ export function shiShenToKr(hanja: string): string {
 }
 
 export const WUXING_LIST: Wuxing[] = ["목", "화", "토", "금", "수"];
+
+export const WUXING_GENERATES: Record<Wuxing, Wuxing> = {
+  목: "화",
+  화: "토",
+  토: "금",
+  금: "수",
+  수: "목",
+};
+
+export const WUXING_OVERCOMES: Record<Wuxing, Wuxing> = {
+  목: "토",
+  토: "수",
+  수: "화",
+  화: "금",
+  금: "목",
+};
+
+export function getShiShen(dayMaster: StemInfo, target: StemInfo): string {
+  const samePolarity = dayMaster.yinYang === target.yinYang;
+  if (dayMaster.wuxing === target.wuxing) return samePolarity ? "비견" : "겁재";
+  if (WUXING_GENERATES[dayMaster.wuxing] === target.wuxing) return samePolarity ? "식신" : "상관";
+  if (WUXING_OVERCOMES[dayMaster.wuxing] === target.wuxing) return samePolarity ? "편재" : "정재";
+  if (WUXING_OVERCOMES[target.wuxing] === dayMaster.wuxing) return samePolarity ? "편관" : "정관";
+  return samePolarity ? "편인" : "정인";
+}
