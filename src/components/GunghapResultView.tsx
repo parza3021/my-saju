@@ -1,16 +1,12 @@
 import { GunghapResult, RelationHit } from "@/lib/types";
 import PillarTable from "./PillarTable";
+import { POLARITY_BADGE } from "./polarity";
 import ZodiacCard from "./ZodiacCard";
-
-const RELATION_BADGE: Record<RelationHit["polarity"], string> = {
-  긍정: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-  주의: "bg-red-500/20 text-red-300 border-red-500/30",
-};
 
 function RelationCard({ hit }: { hit: RelationHit }) {
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-      <span className={`inline-block text-xs rounded-full border px-2 py-0.5 mb-2 ${RELATION_BADGE[hit.polarity]}`}>
+      <span className={`inline-block text-xs rounded-full border px-2 py-0.5 mb-2 ${POLARITY_BADGE[hit.polarity]}`}>
         {hit.type}
       </span>
       <p className="text-sm text-white/70 leading-relaxed">{hit.description}</p>
@@ -19,7 +15,7 @@ function RelationCard({ hit }: { hit: RelationHit }) {
 }
 
 export default function GunghapResultView({ result }: { result: GunghapResult }) {
-  const { person1, person2, dayMasterRelation, branchRelations, zodiacCompat, summary } = result;
+  const { person1, person2, dayMasterRelation, branchRelations, zodiacCompat } = result;
   const positiveHits = branchRelations.filter((r) => r.polarity === "긍정");
   const cautionHits = branchRelations.filter((r) => r.polarity === "주의");
 
@@ -44,11 +40,11 @@ export default function GunghapResultView({ result }: { result: GunghapResult })
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
           <p className="text-sm text-white/80">
             사주 원국을 대조한 결과{" "}
-            <span className="text-emerald-300 font-medium">긍정적인 결합 {summary.positives}건</span>,{" "}
-            <span className="text-red-300 font-medium">주의가 필요한 결합 {summary.cautions}건</span>이 확인되었습니다.
-            {summary.positives > summary.cautions
+            <span className="text-emerald-300 font-medium">긍정적인 결합 {positiveHits.length}건</span>,{" "}
+            <span className="text-red-300 font-medium">주의가 필요한 결합 {cautionHits.length}건</span>이 확인되었습니다.
+            {positiveHits.length > cautionHits.length
               ? " 전반적으로 서로를 편안하게 해주는 요소가 더 많은 궁합입니다."
-              : summary.cautions > summary.positives
+              : cautionHits.length > positiveHits.length
                 ? " 서로 다른 점이 도드라지는 궁합이니, 아래 주의 항목을 참고해 대화로 맞춰가면 좋습니다."
                 : " 좋은 점과 신경 쓸 점이 고르게 섞여 있는 궁합입니다."}
           </p>

@@ -1,5 +1,7 @@
 "use client";
 
+import { BirthInput } from "@/lib/types";
+
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 export interface PersonFormState {
@@ -14,8 +16,8 @@ export interface PersonFormState {
   minute: string;
 }
 
-export const defaultPersonFormState = (name: string): PersonFormState => ({
-  name,
+export const DEFAULT_PERSON: PersonFormState = {
+  name: "",
   calendarType: "solar",
   year: "1995",
   month: "1",
@@ -24,33 +26,54 @@ export const defaultPersonFormState = (name: string): PersonFormState => ({
   timeUnknown: false,
   hour: "12",
   minute: "0",
-});
+};
 
-interface Props {
-  title: string;
-  namePlaceholder: string;
-  value: PersonFormState;
-  onChange: (next: PersonFormState) => void;
+export function personFormToBirthInput(state: PersonFormState): BirthInput | null {
+  const y = Number(state.year);
+  const m = Number(state.month);
+  const d = Number(state.day);
+
+  if (!y || !m || !d || m < 1 || m > 12 || d < 1 || d > 31) return null;
+
+  return {
+    calendarType: state.calendarType,
+    year: y,
+    month: m,
+    day: d,
+    isLeapMonth: state.calendarType === "lunar" ? state.isLeapMonth : false,
+    hour: state.timeUnknown ? null : Number(state.hour),
+    minute: state.timeUnknown ? 0 : Number(state.minute),
+  };
 }
 
-export default function PersonBirthFields({ title, namePlaceholder, value, onChange }: Props) {
+interface Props {
+  title?: string;
+  namePlaceholder?: string;
+  value: PersonFormState;
+  onChange: (next: PersonFormState) => void;
+  children?: React.ReactNode;
+}
+
+export default function PersonBirthFields({ title, namePlaceholder, value, onChange, children }: Props) {
   const set = <K extends keyof PersonFormState>(key: K, val: PersonFormState[K]) =>
     onChange({ ...value, [key]: val });
 
   return (
     <div className="rounded-2xl bg-white/5 border border-white/10 p-6 sm:p-8 space-y-6">
-      <h3 className="text-lg font-semibold text-amber-300">{title}</h3>
+      {title && <h3 className="text-lg font-semibold text-amber-300">{title}</h3>}
 
-      <label className="block text-sm text-white/70">
-        이름 (선택)
-        <input
-          type="text"
-          value={value.name}
-          onChange={(e) => set("name", e.target.value)}
-          placeholder={namePlaceholder}
-          className="mt-1 w-full rounded-lg bg-white/10 border border-white/10 px-3 py-2 text-white outline-none focus:border-amber-400"
-        />
-      </label>
+      {namePlaceholder && (
+        <label className="block text-sm text-white/70">
+          이름 (선택)
+          <input
+            type="text"
+            value={value.name}
+            onChange={(e) => set("name", e.target.value)}
+            placeholder={namePlaceholder}
+            className="mt-1 w-full rounded-lg bg-white/10 border border-white/10 px-3 py-2 text-white outline-none focus:border-amber-400"
+          />
+        </label>
+      )}
 
       <div>
         <span className="block text-sm font-medium text-white/70 mb-2">양력 / 음력</span>
@@ -157,6 +180,8 @@ export default function PersonBirthFields({ title, namePlaceholder, value, onCha
           </div>
         )}
       </div>
+
+      {children}
     </div>
   );
 }

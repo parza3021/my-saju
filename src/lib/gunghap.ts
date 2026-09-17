@@ -29,15 +29,11 @@ export function analyzeGunghap(
 
   const zodiacCompat = describeZodiacCompat(zodiac1.element, zodiac2.element);
 
-  const positives = branchRelations.filter((r) => r.polarity === "긍정").length;
-  const cautions = branchRelations.filter((r) => r.polarity === "주의").length;
-
   return {
     person1: { name: name1, saju: saju1, zodiac: zodiac1 },
     person2: { name: name2, saju: saju2, zodiac: zodiac2 },
     dayMasterRelation,
     branchRelations,
     zodiacCompat,
-    summary: { positives, cautions },
   };
 }

@@ -79,3 +79,7 @@ export function calculateSaju(input: BirthInput): SajuResult {
     wuxingCount: orderedWuxingCount,
   };
 }
+
+export function getPillars(saju: SajuResult): Pillar[] {
+  return [saju.year, saju.month, saju.day, saju.time].filter((p): p is Pillar => p !== null);
+}

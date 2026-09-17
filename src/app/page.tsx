@@ -82,7 +82,6 @@ export default function Home() {
             weekSummary={fortune.weekSummary}
             selectedDate={selectedDate}
             onSelectedDateChange={setSelectedDate}
-            onResetDate={() => setSelectedDate(toDateInputValue(new Date()))}
           />
         </div>
       )}

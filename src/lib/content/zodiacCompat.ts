@@ -15,10 +15,6 @@ const SAME_ELEMENT_CONTENT: Record<string, string> = {
 };
 
 export function describeZodiacCompat(element1: string, element2: string): string {
-  if (element1 === element2) {
-    return SAME_ELEMENT_CONTENT[element1] ?? "같은 원소의 별자리로 성향이 비슷해 이해가 빠른 궁합입니다.";
-  }
-  const key1 = `${element1}_${element2}`;
-  const key2 = `${element2}_${element1}`;
-  return PAIR_CONTENT[key1] ?? PAIR_CONTENT[key2] ?? "서로 다른 매력을 지닌 별자리 조합으로, 다름을 이해하려는 노력이 관계를 풍부하게 만들어줍니다.";
+  if (element1 === element2) return SAME_ELEMENT_CONTENT[element1];
+  return PAIR_CONTENT[`${element1}_${element2}`] ?? PAIR_CONTENT[`${element2}_${element1}`];
 }

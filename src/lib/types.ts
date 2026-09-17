@@ -78,8 +78,6 @@ export interface IljinResult {
 }
 
 export interface WeekSummary {
-  start: { month: number; day: number; weekday: string };
-  end: { month: number; day: number; weekday: string };
   counts: Record<IljinResult["level"], number>;
   toneTitle: string;
   toneDescription: string;
@@ -113,5 +111,4 @@ export interface GunghapResult {
   dayMasterRelation: DayMasterRelation;
   branchRelations: RelationHit[];
   zodiacCompat: string;
-  summary: { positives: number; cautions: number };
 }

@@ -1,8 +1,8 @@
-import { CHUNG, WONJIN, YUKHAP } from "./branchRelations";
+import { CHUNG, findPair, WONJIN, YUKHAP } from "./branchRelations";
 import { ILJIN_FORTUNE } from "./content/iljin";
 import { WUXING_CONTENT } from "./content/wuxing";
 import { getShiShen, WUXING_LIST } from "./ganzhi";
-import { calculateSaju } from "./saju";
+import { calculateSaju, getPillars } from "./saju";
 import { DailyRelationNote, IljinResult, Pillar, SajuResult, WeekSummary, Wuxing } from "./types";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -28,49 +28,28 @@ const SHI_SHEN_SCORE: Record<string, number> = {
   편관: -2,
 };
 
-function getPillars(saju: SajuResult): Pillar[] {
-  return [saju.year, saju.month, saju.day, saju.time].filter(
-    (p): p is Pillar => p !== null
+const DAY_RULES: [
+  [string, string, ...unknown[]][],
+  DailyRelationNote["type"],
+  DailyRelationNote["polarity"],
+  string,
+  string,
+][] = [
+  [YUKHAP, "육합", "긍정", "육합을 이루어", "이야기가 순조롭게 맞물리는"],
+  [CHUNG, "충", "주의", "충을 이루어", "변동이 생기거나 예정이 틀어지기 쉬운"],
+  [WONJIN, "원진", "주의", "원진에 해당해", "사소한 일에 신경이 예민해지기 쉬운"],
+];
+
+function findDayRelations(saju: SajuResult, dayBranch: string, dayWord: string): DailyRelationNote[] {
+  return getPillars(saju).flatMap((pillar) =>
+    DAY_RULES.filter(([list]) => findPair(list, pillar.zhi.hanja, dayBranch)).map(
+      ([, type, polarity, verb, effect]) => ({
+        type,
+        polarity,
+        description: `${dayWord}의 일지가 내 ${pillar.label}(${pillar.zhi.hangul})와(과) ${verb}, ${PILLAR_AREA[pillar.label]}에서 ${effect} 날입니다.`,
+      })
+    )
   );
-}
-
-function findDayRelations(
-  saju: SajuResult,
-  dayBranch: string,
-  dayWord: string
-): DailyRelationNote[] {
-  const notes: DailyRelationNote[] = [];
-
-  for (const pillar of getPillars(saju)) {
-    const mine = pillar.zhi.hanja;
-    const area = PILLAR_AREA[pillar.label];
-
-    if (YUKHAP.some(([a, b]) => (a === mine && b === dayBranch) || (a === dayBranch && b === mine))) {
-      notes.push({
-        type: "육합",
-        polarity: "긍정",
-        description: `${dayWord}의 일지가 내 ${pillar.label}(${pillar.zhi.hangul})와(과) 육합을 이루어, ${area}에서 이야기가 순조롭게 맞물리는 날입니다.`,
-      });
-    }
-
-    if (CHUNG.some(([a, b]) => (a === mine && b === dayBranch) || (a === dayBranch && b === mine))) {
-      notes.push({
-        type: "충",
-        polarity: "주의",
-        description: `${dayWord}의 일지가 내 ${pillar.label}(${pillar.zhi.hangul})와(과) 충을 이루어, ${area}에서 변동이 생기거나 예정이 틀어지기 쉬운 날입니다.`,
-      });
-    }
-
-    if (WONJIN.some(([a, b]) => (a === mine && b === dayBranch) || (a === dayBranch && b === mine))) {
-      notes.push({
-        type: "원진",
-        polarity: "주의",
-        description: `${dayWord}의 일지가 내 ${pillar.label}(${pillar.zhi.hangul})와(과) 원진에 해당해, ${area}에서 사소한 일에 신경이 예민해지기 쉬운 날입니다.`,
-      });
-    }
-  }
-
-  return notes;
 }
 
 function describeElementFlow(saju: SajuResult, dayElements: Wuxing[], dayWord: string): string {
@@ -98,11 +77,7 @@ export function getSupplementWuxing(saju: SajuResult): { element: Wuxing; color:
   return { element, color: WUXING_CONTENT[element].color };
 }
 
-export function calculateDailyFortune(
-  saju: SajuResult,
-  date: Date,
-  today: Date = new Date()
-): IljinResult {
+export function calculateDailyFortune(saju: SajuResult, date: Date): IljinResult {
   const daySaju = calculateSaju({
     calendarType: "solar",
     year: date.getFullYear(),
@@ -115,7 +90,7 @@ export function calculateDailyFortune(
 
   const gan = daySaju.day.gan;
   const zhi = daySaju.day.zhi;
-  const isToday = date.toDateString() === today.toDateString();
+  const isToday = date.toDateString() === new Date().toDateString();
   const dayWord = isToday ? "오늘" : "이 날";
   const shiShen = getShiShen(saju.dayMaster, gan);
   const relations = findDayRelations(saju, zhi.hanja, dayWord);
@@ -125,7 +100,7 @@ export function calculateDailyFortune(
     if (r.type === "충") return sum - 2;
     return sum - 1;
   }, 0);
-  const score = (SHI_SHEN_SCORE[shiShen] ?? 0) + relationScore;
+  const score = SHI_SHEN_SCORE[shiShen] + relationScore;
   const level = score >= 2 ? "순조" : score <= -1 ? "주의" : "보통";
 
   return {
@@ -154,31 +129,18 @@ function startOfWeek(date: Date): Date {
   return d;
 }
 
-export function calculateWeeklyFortune(
-  saju: SajuResult,
-  refDate: Date = new Date(),
-  today: Date = new Date()
-): IljinResult[] {
+export function calculateWeeklyFortune(saju: SajuResult, refDate: Date): IljinResult[] {
   const monday = startOfWeek(refDate);
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + i);
-    return calculateDailyFortune(saju, date, today);
+    return calculateDailyFortune(saju, date);
   });
 }
 
-const SHI_SHEN_GROUP: Record<string, string> = {
-  비견: "비겁",
-  겁재: "비겁",
-  식신: "식상",
-  상관: "식상",
-  편재: "재성",
-  정재: "재성",
-  편관: "관성",
-  정관: "관성",
-  편인: "인성",
-  정인: "인성",
-};
+// 두 개씩 짝지어 계열을 이룹니다 (비견·겁재 = 비겁, 식신·상관 = 식상 …)
+const SHI_SHEN_ORDER = ["비견", "겁재", "식신", "상관", "편재", "정재", "편관", "정관", "편인", "정인"];
+const SHI_SHEN_GROUPS = ["비겁", "식상", "재성", "관성", "인성"];
 
 const GROUP_TONE: Record<string, { title: string; description: string }> = {
   비겁: {
@@ -213,7 +175,7 @@ export function summarizeWeek(days: IljinResult[]): WeekSummary {
 
   for (const day of days) {
     counts[day.level]++;
-    const group = SHI_SHEN_GROUP[day.shiShen];
+    const group = SHI_SHEN_GROUPS[Math.floor(SHI_SHEN_ORDER.indexOf(day.shiShen) / 2)];
     groupCounts[group] = (groupCounts[group] ?? 0) + 1;
   }
 
@@ -221,12 +183,7 @@ export function summarizeWeek(days: IljinResult[]): WeekSummary {
   const dominant = ranked.length > 1 && ranked[0][1] === ranked[1][1] ? "혼재" : ranked[0][0];
   const tone = GROUP_TONE[dominant];
 
-  const first = days[0];
-  const last = days[days.length - 1];
-
   return {
-    start: { month: first.date.month, day: first.date.day, weekday: first.date.weekday },
-    end: { month: last.date.month, day: last.date.day, weekday: last.date.weekday },
     counts,
     toneTitle: tone.title,
     toneDescription: tone.description,

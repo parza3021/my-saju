@@ -1,9 +1,5 @@
 import { IljinResult, Wuxing } from "@/lib/types";
-
-const RELATION_BADGE: Record<IljinResult["relations"][number]["polarity"], string> = {
-  긍정: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-  주의: "bg-red-500/20 text-red-300 border-red-500/30",
-};
+import { POLARITY_BADGE } from "./polarity";
 
 export default function IljinCard({
   iljin,
@@ -56,7 +52,7 @@ export default function IljinCard({
           {relations.map((r, i) => (
             <div key={i} className="flex gap-2 items-start">
               <span
-                className={`shrink-0 text-xs rounded-full border px-2 py-0.5 ${RELATION_BADGE[r.polarity]}`}
+                className={`shrink-0 text-xs rounded-full border px-2 py-0.5 ${POLARITY_BADGE[r.polarity]}`}
               >
                 {r.type}
               </span>

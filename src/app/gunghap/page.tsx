@@ -2,15 +2,14 @@
 
 import { useRef, useState } from "react";
 import GunghapResultView from "@/components/GunghapResultView";
-import PersonBirthFields, { defaultPersonFormState, PersonFormState } from "@/components/PersonBirthFields";
+import PersonBirthFields, { DEFAULT_PERSON, personFormToBirthInput } from "@/components/PersonBirthFields";
 import SiteNav from "@/components/SiteNav";
 import { analyzeGunghap } from "@/lib/gunghap";
-import { personFormToBirthInput } from "@/lib/personForm";
 import { GunghapResult } from "@/lib/types";
 
 export default function GunghapPage() {
-  const [person1, setPerson1] = useState<PersonFormState>(defaultPersonFormState(""));
-  const [person2, setPerson2] = useState<PersonFormState>(defaultPersonFormState(""));
+  const [person1, setPerson1] = useState(DEFAULT_PERSON);
+  const [person2, setPerson2] = useState(DEFAULT_PERSON);
   const [result, setResult] = useState<GunghapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);

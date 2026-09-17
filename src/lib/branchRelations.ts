@@ -1,4 +1,5 @@
-import { BranchRef, Pillar, RelationHit, SajuResult, Wuxing } from "./types";
+import { getPillars } from "./saju";
+import { BranchRef, RelationHit, SajuResult, Wuxing } from "./types";
 
 export const YUKHAP: [string, string, Wuxing | null][] = [
   ["子", "丑", "토"],
@@ -40,15 +41,16 @@ const SAMHAP: [string, string, string, Wuxing][] = [
   ["巳", "酉", "丑", "금"],
 ];
 
+export function findPair<T extends [string, string, ...unknown[]]>(list: T[], a: string, b: string) {
+  return list.find(([x, y]) => (x === a && y === b) || (x === b && y === a));
+}
+
 function label(ref: BranchRef, name: string): string {
   return `${name}님의 ${ref.pillarLabel}(${ref.branch.hangul})`;
 }
 
 export function getBranchRefs(saju: SajuResult, person: 1 | 2): BranchRef[] {
-  const pillars = [saju.year, saju.month, saju.day, saju.time].filter(
-    (p): p is NonNullable<typeof p> => p !== null
-  );
-  return pillars.map((p) => ({ person, pillarLabel: p.label as Pillar["label"], branch: p.zhi }));
+  return getPillars(saju).map((p) => ({ person, pillarLabel: p.label, branch: p.zhi }));
 }
 
 function pickInstances(hanjaList: readonly string[], pool: BranchRef[]): BranchRef[] | null {
@@ -72,14 +74,13 @@ export function findBranchRelations(
   refs2: BranchRef[]
 ): RelationHit[] {
   const hits: RelationHit[] = [];
-  const nameOf = (person: 1 | 2) => (person === 1 ? name1 : name2);
 
   for (const x of refs1) {
     for (const y of refs2) {
       const xh = x.branch.hanja;
       const yh = y.branch.hanja;
 
-      const yukhap = YUKHAP.find(([a, b]) => (a === xh && b === yh) || (a === yh && b === xh));
+      const yukhap = findPair(YUKHAP, xh, yh);
       if (yukhap) {
         const elementNote = yukhap[2] ? ` 합쳐진 기운은 ${yukhap[2]}의 성질을 띱니다.` : "";
         hits.push({
@@ -90,7 +91,7 @@ export function findBranchRelations(
         });
       }
 
-      if (CHUNG.some(([a, b]) => (a === xh && b === yh) || (a === yh && b === xh))) {
+      if (findPair(CHUNG, xh, yh)) {
         hits.push({
           type: "충",
           polarity: "주의",
@@ -99,7 +100,7 @@ export function findBranchRelations(
         });
       }
 
-      if (WONJIN.some(([a, b]) => (a === xh && b === yh) || (a === yh && b === xh))) {
+      if (findPair(WONJIN, xh, yh)) {
         hits.push({
           type: "원진",
           polarity: "주의",
@@ -108,7 +109,7 @@ export function findBranchRelations(
         });
       }
 
-      if ((JAMYO_HYUNG[0] === xh && JAMYO_HYUNG[1] === yh) || (JAMYO_HYUNG[0] === yh && JAMYO_HYUNG[1] === xh)) {
+      if (findPair([JAMYO_HYUNG], xh, yh)) {
         hits.push({
           type: "형",
           polarity: "주의",
@@ -129,44 +130,44 @@ export function findBranchRelations(
   }
 
   const pool = [...refs1, ...refs2];
+  const joint = (hanjaList: readonly string[]) => {
+    const refs = pickInstances(hanjaList, pool);
+    return refs && hasBothPersons(refs) ? refs : null;
+  };
+  const names = (refs: BranchRef[]) =>
+    refs.map((r) => label(r, r.person === 1 ? name1 : name2)).join(", ");
 
-  for (const [a, b, c] of SAMHYUNG) {
-    const full = pickInstances([a, b, c], pool);
-    if (full && hasBothPersons(full)) {
-      const names = full.map((r) => label(r, nameOf(r.person))).join(", ");
+  for (const trio of SAMHYUNG) {
+    const refs = joint(trio);
+    if (refs) {
       hits.push({
         type: "삼형",
         polarity: "주의",
-        branches: full,
-        description: `${names}가 모여 삼형을 이루어, 둘 사이에 갈등이나 잔소리가 잦아지기 쉬운 조합입니다. 다만 함께 위기를 헤쳐나가는 과정에서 오히려 단단해지는 경우도 많으니 갈등 자체보다 대처 방식이 중요합니다.`,
+        branches: refs,
+        description: `${names(refs)}가 모여 삼형을 이루어, 둘 사이에 갈등이나 잔소리가 잦아지기 쉬운 조합입니다. 다만 함께 위기를 헤쳐나가는 과정에서 오히려 단단해지는 경우도 많으니 갈등 자체보다 대처 방식이 중요합니다.`,
       });
     }
   }
 
   for (const [a, b, c, elem] of SAMHAP) {
-    const full = pickInstances([a, b, c], pool);
-    if (full && hasBothPersons(full)) {
-      const names = full.map((r) => label(r, nameOf(r.person))).join(", ");
+    const full = joint([a, b, c]);
+    if (full) {
       hits.push({
         type: "삼합",
         polarity: "긍정",
         branches: full,
-        description: `${names}가 모여 삼합을 이루어 ${elem}의 기운으로 합쳐지는, 뜻이 잘 맞고 함께 일을 도모하기 좋은 조합입니다.`,
+        description: `${names(full)}가 모여 삼합을 이루어 ${elem}의 기운으로 합쳐지는, 뜻이 잘 맞고 함께 일을 도모하기 좋은 조합입니다.`,
       });
       continue;
     }
-    for (const pair of [[a, b], [b, c], [a, c]] as const) {
-      const partial = pickInstances(pair, pool);
-      if (partial && hasBothPersons(partial)) {
-        const names = partial.map((r) => label(r, nameOf(r.person))).join(", ");
-        hits.push({
-          type: "반합",
-          polarity: "긍정",
-          branches: partial,
-          description: `${names}가 반합을 이루어 ${elem} 기운으로 서로를 보완하는 조합입니다. 완전한 삼합은 아니지만 협력이 잘 되는 편입니다.`,
-        });
-        break;
-      }
+    const partial = [[a, b], [b, c], [a, c]].map((pair) => joint(pair)).find((refs) => refs !== null);
+    if (partial) {
+      hits.push({
+        type: "반합",
+        polarity: "긍정",
+        branches: partial,
+        description: `${names(partial)}가 반합을 이루어 ${elem} 기운으로 서로를 보완하는 조합입니다. 완전한 삼합은 아니지만 협력이 잘 되는 편입니다.`,
+      });
     }
   }
 
