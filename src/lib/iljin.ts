@@ -1,145 +1,80 @@
-import { CHUNG, findPair, WONJIN, YUKHAP } from "./branchRelations";
+// 일진·주간 — 엔진의 하루 계산(dailyFacts)을 화면에 맞게 묶는다.
+
 import { ILJIN_FORTUNE } from "./content/iljin";
 import { WUXING_CONTENT } from "./content/wuxing";
-import { getShiShen, WUXING_LIST } from "./ganzhi";
-import { calculateSaju, getPillars } from "./saju";
-import { DailyRelationNote, IljinResult, Pillar, SajuResult, WeekSummary, Wuxing } from "./types";
+import { Day, weekdayMon0 } from "./engine/clock";
+import { DailyFacts, dailyFacts, Reaction } from "./engine/daily";
+import { PersonFacts } from "./engine/natal";
+import { relPlain, relTag } from "./engine/plain";
+import { EL_ORDER, gwa, Sipsin, Wuxing } from "./engine/relations";
+import { IljinFortune } from "./types";
 
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+export type Level = "순조" | "보통" | "주의";
 
-// 자리별로 영향을 받는 생활 영역 — 명리학에서 각 주(柱)가 상징하는 범위
-const PILLAR_AREA: Record<Pillar["label"], string> = {
-  년주: "윗사람이나 대외적인 관계",
-  월주: "직장과 사회생활",
-  일주: "나 자신과 가장 가까운 사람",
-  시주: "아랫사람이나 개인적인 일과",
-};
-
-const SHI_SHEN_SCORE: Record<string, number> = {
-  식신: 2,
-  정인: 2,
-  정재: 2,
-  정관: 2,
-  비견: 1,
-  편재: 1,
-  편인: 0,
-  상관: -1,
-  겁재: -1,
-  편관: -2,
-};
-
-const DAY_RULES: [
-  [string, string, ...unknown[]][],
-  DailyRelationNote["type"],
-  DailyRelationNote["polarity"],
-  string,
-  string,
-][] = [
-  [YUKHAP, "육합", "긍정", "육합을 이루어", "이야기가 순조롭게 맞물리는"],
-  [CHUNG, "충", "주의", "충을 이루어", "변동이 생기거나 예정이 틀어지기 쉬운"],
-  [WONJIN, "원진", "주의", "원진에 해당해", "사소한 일에 신경이 예민해지기 쉬운"],
-];
-
-function findDayRelations(saju: SajuResult, dayBranch: string, dayWord: string): DailyRelationNote[] {
-  return getPillars(saju).flatMap((pillar) =>
-    DAY_RULES.filter(([list]) => findPair(list, pillar.zhi.hanja, dayBranch)).map(
-      ([, type, polarity, verb, effect]) => ({
-        type,
-        polarity,
-        description: `${dayWord}의 일지가 내 ${pillar.label}(${pillar.zhi.hangul})와(과) ${verb}, ${PILLAR_AREA[pillar.label]}에서 ${effect} 날입니다.`,
-      })
-    )
-  );
+export interface DayView {
+  facts: DailyFacts;
+  isToday: boolean;
+  level: Level;
+  fortune: IljinFortune;
 }
 
-function describeElementFlow(saju: SajuResult, dayElements: Wuxing[], dayWord: string): string {
-  const counts = saju.wuxingCount;
-  const min = Math.min(...WUXING_LIST.map((w) => counts[w]));
-  const max = Math.max(...WUXING_LIST.map((w) => counts[w]));
-
-  const lacking = dayElements.find((e) => counts[e] === min);
-  if (lacking) {
-    return `${dayWord}은 사주에 상대적으로 부족한 ${lacking} 기운이 들어오는 날이라, 평소 아쉬웠던 부분이 채워지는 흐름입니다.`;
-  }
-
-  const excessive = dayElements.find((e) => counts[e] === max);
-  if (excessive) {
-    return `${dayWord}은 이미 왕성한 ${excessive} 기운이 더해지는 날이라, 한쪽으로 치우치지 않도록 속도를 조절하는 것이 좋습니다.`;
-  }
-
-  const unique = Array.from(new Set(dayElements));
-  return `${dayWord} 들어오는 ${unique.join("·")} 기운은 내 사주와 무난하게 어울리는 흐름입니다.`;
+export function levelOfStars(stars: number): Level {
+  return stars >= 4 ? "순조" : stars <= 2 ? "주의" : "보통";
 }
 
-export function getSupplementWuxing(saju: SajuResult): { element: Wuxing; color: string } {
-  const counts = saju.wuxingCount;
-  const element = WUXING_LIST.reduce((a, b) => (counts[b] < counts[a] ? b : a));
-  return { element, color: WUXING_CONTENT[element].color };
-}
-
-export function calculateDailyFortune(saju: SajuResult, date: Date): IljinResult {
-  const daySaju = calculateSaju({
-    calendarType: "solar",
-    year: date.getFullYear(),
-    month: date.getMonth() + 1,
-    day: date.getDate(),
-    isLeapMonth: false,
-    hour: 12,
-    minute: 0,
-  });
-
-  const gan = daySaju.day.gan;
-  const zhi = daySaju.day.zhi;
-  const isToday = date.toDateString() === new Date().toDateString();
-  const dayWord = isToday ? "오늘" : "이 날";
-  const shiShen = getShiShen(saju.dayMaster, gan);
-  const relations = findDayRelations(saju, zhi.hanja, dayWord);
-
-  const relationScore = relations.reduce((sum, r) => {
-    if (r.type === "육합") return sum + 2;
-    if (r.type === "충") return sum - 2;
-    return sum - 1;
-  }, 0);
-  const score = SHI_SHEN_SCORE[shiShen] + relationScore;
-  const level = score >= 2 ? "순조" : score <= -1 ? "주의" : "보통";
-
+export function dayView(P: PersonFacts, day: Day, today: Day): DayView {
+  const facts = dailyFacts(P, day);
   return {
-    date: {
-      year: date.getFullYear(),
-      month: date.getMonth() + 1,
-      day: date.getDate(),
-      weekday: WEEKDAYS[date.getDay()],
-      isToday,
-    },
-    gan,
-    zhi,
-    shiShen,
-    fortune: ILJIN_FORTUNE[shiShen],
-    relations,
-    elementNote: describeElementFlow(saju, [gan.wuxing, zhi.wuxing], dayWord),
-    level,
+    facts,
+    isToday: day === today,
+    level: levelOfStars(facts.dayScore.stars),
+    fortune: ILJIN_FORTUNE[facts.sipsinToday[0]],
   };
 }
 
-// 기준일이 속한 주의 월요일 (한 주를 월~일로 봅니다)
-function startOfWeek(date: Date): Date {
-  const d = new Date(date);
-  const offset = d.getDay() === 0 ? -6 : 1 - d.getDay();
-  d.setDate(d.getDate() + offset);
-  return d;
+/** 기준일이 속한 주(월~일) 7일 */
+export function weekViews(P: PersonFacts, ref: Day, today: Day): DayView[] {
+  const monday = ref - weekdayMon0(ref);
+  return Array.from({ length: 7 }, (_, i) => dayView(P, monday + i, today));
 }
 
-export function calculateWeeklyFortune(saju: SajuResult, refDate: Date): IljinResult[] {
-  const monday = startOfWeek(refDate);
-  return Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + i);
-    return calculateDailyFortune(saju, date);
-  });
+/** 가장 부족한 오행 — 오늘 보완하면 좋은 기운 */
+export function supplementWuxing(P: PersonFacts): { element: Wuxing; color: string } {
+  const element = EL_ORDER.reduce((a, b) => (P.ohaeng[b] < P.ohaeng[a] ? b : a));
+  return { element, color: WUXING_CONTENT[element].color };
 }
+
+export type ReactionTone = "good" | "warn" | "mixed" | "neutral";
+
+const GOOD = ["육합", "천간합", "반합"];
+const WARN = ["충", "천간충", "형", "파", "해", "원진", "자형"];
+
+export function reactionTone(rel: string[]): ReactionTone {
+  const names = rel.map((r) => r.split("(")[0]);
+  const g = names.some((n) => GOOD.includes(n));
+  const w = names.some((n) => WARN.includes(n));
+  return g && w ? "mixed" : g ? "good" : w ? "warn" : "neutral";
+}
+
+/** 반응 한 건을 쉬운 말로 — 예: "일하는 방식 자리(사)와 정면으로 부딪힘" + 전문 표기 */
+export function reactionText(r: Reaction, todayStem: string, todayBranch: string): { plain: string; tag: string } {
+  const where = r.posKey === "day" && r.kind === "간" ? "나 자신" : POS_NAME[r.posKey];
+  const part = r.kind === "간" ? "윗글자" : "아랫글자";
+  if (r.rel.length === 1 && r.rel[0] === "복음") {
+    return { plain: `${where}의 ${part}(${r.natal})${gwa(r.natal)} 오늘 글자가 같아 기운이 겹침`, tag: "복음" };
+  }
+  const tag = r.kind === "지"
+    ? relTag(todayBranch, r.natal, r.rel.filter((x) => x !== "복음"))
+    : `${todayStem}${r.natal}${r.rel[0].startsWith("천간합") ? "합" : "충"}`;
+  return { plain: `${where}의 ${part}(${r.natal})${gwa(r.natal)} ${relPlain(r.rel.filter((x) => x !== "복음"))}`, tag };
+}
+
+const POS_NAME = { year: "배경 자리", month: "일하는 방식 자리", day: "일상 자리", hour: "사적인 시간 자리" } as const;
+
+// ---- 주간 요약 -----------------------------------------------------------------
 
 // 두 개씩 짝지어 계열을 이룹니다 (비견·겁재 = 비겁, 식신·상관 = 식상 …)
-const SHI_SHEN_ORDER = ["비견", "겁재", "식신", "상관", "편재", "정재", "편관", "정관", "편인", "정인"];
+const SHI_SHEN_ORDER: Sipsin[] = ["비견", "겁재", "식신", "상관", "편재", "정재", "편관", "정관", "편인", "정인"];
 const SHI_SHEN_GROUPS = ["비겁", "식상", "재성", "관성", "인성"];
 
 const GROUP_TONE: Record<string, { title: string; description: string }> = {
@@ -169,35 +104,38 @@ const GROUP_TONE: Record<string, { title: string; description: string }> = {
   },
 };
 
-export function summarizeWeek(days: IljinResult[]): WeekSummary {
-  const counts: Record<IljinResult["level"], number> = { 순조: 0, 보통: 0, 주의: 0 };
+export interface WeekSummary {
+  counts: Record<Level, number>;
+  toneTitle: string;
+  toneDescription: string;
+  best: DayView | null;
+  worst: DayView | null;
+  avgStars: number;
+}
+
+export function summarizeWeek(days: DayView[]): WeekSummary {
+  const counts: Record<Level, number> = { 순조: 0, 보통: 0, 주의: 0 };
   const groupCounts: Record<string, number> = {};
 
   for (const day of days) {
     counts[day.level]++;
-    const group = SHI_SHEN_GROUPS[Math.floor(SHI_SHEN_ORDER.indexOf(day.shiShen) / 2)];
+    const group = SHI_SHEN_GROUPS[Math.floor(SHI_SHEN_ORDER.indexOf(day.facts.sipsinToday[0]) / 2)];
     groupCounts[group] = (groupCounts[group] ?? 0) + 1;
   }
 
   const ranked = Object.entries(groupCounts).sort((a, b) => b[1] - a[1]);
   const dominant = ranked.length > 1 && ranked[0][1] === ranked[1][1] ? "혼재" : ranked[0][0];
   const tone = GROUP_TONE[dominant];
+  const byStars = [...days].sort((a, b) => b.facts.dayScore.stars - a.facts.dayScore.stars);
 
   return {
     counts,
     toneTitle: tone.title,
     toneDescription: tone.description,
-    best: days.find((d) => d.level === "순조") ?? null,
-    worst: days.find((d) => d.level === "주의") ?? null,
+    best: byStars[0].facts.dayScore.stars >= 4 ? byStars[0] : null,
+    worst: byStars[byStars.length - 1].facts.dayScore.stars <= 2 ? byStars[byStars.length - 1] : null,
+    avgStars: Math.round((days.reduce((s, d) => s + d.facts.dayScore.stars, 0) / days.length) * 10) / 10,
   };
 }
 
-export function toDateInputValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-export function parseDateInput(value: string): Date {
-  const [y, m, d] = value.split("-").map(Number);
-  return new Date(y, m - 1, d, 12, 0, 0);
-}
+export const WEEKDAY_LABEL = "월화수목금토일";

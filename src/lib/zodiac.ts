@@ -134,24 +134,13 @@ const ZODIACS: ZodiacDef[] = [
   },
 ];
 
-function inRange(month: number, day: number, def: ZodiacDef): boolean {
-  const [sm, sd] = def.start;
-  const [em, ed] = def.end;
-  if (sm === em) {
-    return month === sm && day >= sd && day <= ed;
-  }
-  if (sm > em) {
-    // wraps around new year (e.g. 염소자리: 12/22 ~ 1/19)
-    return (month === sm && day >= sd) || (month === em && day <= ed);
-  }
-  if (month === sm) return day >= sd;
-  if (month === em) return day <= ed;
-  return month > sm && month < em;
+function toResult(def: ZodiacDef): ZodiacResult {
+  const { name, hanja, dateRange, element, keyword, description } = def;
+  return { name, hanja, dateRange, element, keyword, description };
 }
 
-export function getZodiac(month: number, day: number): ZodiacResult {
-  const def = ZODIACS.find((z) => inRange(month, day, z));
-  if (!def) throw new Error(`별자리를 찾을 수 없습니다: ${month}/${day}`);
-  const { start: _start, end: _end, ...rest } = def;
-  return rest;
+export function zodiacByName(name: string): ZodiacResult {
+  const def = ZODIACS.find((z) => z.name === name);
+  if (!def) throw new Error(`별자리를 찾을 수 없습니다: ${name}`);
+  return toResult(def);
 }

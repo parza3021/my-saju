@@ -1,11 +1,14 @@
 "use client";
 
-import { BirthInput } from "@/lib/types";
+import { ymdOfDay } from "@/lib/engine/clock";
+import { BirthMember } from "@/lib/engine/natal";
+import { lunarToSolar } from "@/lib/engine/manseryeok";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 export interface PersonFormState {
   name: string;
+  gender: "M" | "F" | "";
   calendarType: "solar" | "lunar";
   year: string;
   month: string;
@@ -18,6 +21,7 @@ export interface PersonFormState {
 
 export const DEFAULT_PERSON: PersonFormState = {
   name: "",
+  gender: "",
   calendarType: "solar",
   year: "1995",
   month: "1",
@@ -28,19 +32,36 @@ export const DEFAULT_PERSON: PersonFormState = {
   minute: "0",
 };
 
-export function personFormToBirthInput(state: PersonFormState): BirthInput | null {
+/** 폼 입력 → 엔진 입력. 날짜가 올바르지 않으면 null (음력 윤달이 없는 해 등은 엔진이 던지는 오류로 잡는다). */
+export function personFormToMember(state: PersonFormState, fallbackName: string): BirthMember | null {
   const y = Number(state.year);
   const m = Number(state.month);
   const d = Number(state.day);
 
-  if (!y || !m || !d || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) return null;
+  if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+
+  const calendar = state.calendarType;
+  if (calendar === "solar") {
+    const probe = new Date(Date.UTC(y, m - 1, d));
+    if (probe.getUTCMonth() !== m - 1 || probe.getUTCDate() !== d) return null;
+  } else {
+    try {
+      const sd = ymdOfDay(lunarToSolar(y, m, d, state.isLeapMonth));
+      if (!sd.year) return null;
+    } catch {
+      return null;
+    }
+  }
 
   return {
-    calendarType: state.calendarType,
+    name: state.name.trim() || fallbackName,
+    gender: state.gender || null,
     year: y,
     month: m,
     day: d,
-    isLeapMonth: state.calendarType === "lunar" ? state.isLeapMonth : false,
+    calendar,
+    leap: calendar === "lunar" ? state.isLeapMonth : false,
     hour: state.timeUnknown ? null : Number(state.hour),
     minute: state.timeUnknown ? 0 : Number(state.minute),
   };
@@ -74,6 +95,34 @@ export default function PersonBirthFields({ title, namePlaceholder, value, onCha
           />
         </label>
       )}
+
+      <div>
+        <span className="block text-sm font-medium text-white/70 mb-2">
+          성별 <span className="text-white/40 font-normal">(대운 계산용 · 선택)</span>
+        </span>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              ["M", "남성"],
+              ["F", "여성"],
+              ["", "선택 안 함"],
+            ] as const
+          ).map(([val, label]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => set("gender", val)}
+              className={`rounded-lg py-2 text-sm font-medium transition-colors ${
+                value.gender === val
+                  ? "bg-amber-400 text-neutral-900"
+                  : "bg-white/10 text-white/70 hover:bg-white/20"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div>
         <span className="block text-sm font-medium text-white/70 mb-2">양력 / 음력</span>

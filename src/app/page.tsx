@@ -4,49 +4,35 @@ import { useMemo, useRef, useState } from "react";
 import BirthForm from "@/components/BirthForm";
 import ResultSection from "@/components/ResultSection";
 import SiteNav from "@/components/SiteNav";
-import {
-  calculateDailyFortune,
-  calculateWeeklyFortune,
-  parseDateInput,
-  summarizeWeek,
-  toDateInputValue,
-} from "@/lib/iljin";
-import { calculateSaju } from "@/lib/saju";
-import { BirthInput, SajuResult, ZodiacResult } from "@/lib/types";
-import { getZodiac } from "@/lib/zodiac";
+import { analyzePerson, todayKst } from "@/lib/analysis";
+import { Day } from "@/lib/engine/clock";
+import { BirthMember, PersonFacts } from "@/lib/engine/natal";
+import { dayView, weekViews } from "@/lib/iljin";
 
 export default function Home() {
-  const [saju, setSaju] = useState<SajuResult | null>(null);
-  const [zodiac, setZodiac] = useState<ZodiacResult | null>(null);
-  const [selectedDate, setSelectedDate] = useState(() => toDateInputValue(new Date()));
+  const [person, setPerson] = useState<PersonFacts | null>(null);
+  const [selectedDay, setSelectedDay] = useState<Day | null>(null);
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const fortune = useMemo(() => {
-    if (!saju) return null;
-    const date = parseDateInput(selectedDate);
-    const weekly = calculateWeeklyFortune(saju, date);
-    return {
-      iljin: calculateDailyFortune(saju, date),
-      weekly,
-      weekSummary: summarizeWeek(weekly),
-    };
-  }, [saju, selectedDate]);
+    if (!person) return null;
+    const today = todayKst();
+    const day = selectedDay ?? today;
+    return { today, day, view: dayView(person, day, today), weekly: weekViews(person, day, today) };
+  }, [person, selectedDay]);
 
-  function handleSubmit(input: BirthInput) {
+  function handleSubmit(input: BirthMember) {
     try {
-      const result = calculateSaju(input);
-      const z = getZodiac(result.solarBirth.month, result.solarBirth.day);
-      setSaju(result);
-      setZodiac(z);
+      setPerson(analyzePerson(input));
+      setSelectedDay(null);
       setError(null);
       requestAnimationFrame(() => {
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     } catch {
       setError("입력하신 생년월일을 계산할 수 없습니다. 날짜를 다시 확인해주세요.");
-      setSaju(null);
-      setZodiac(null);
+      setPerson(null);
     }
   }
 
@@ -72,16 +58,15 @@ export default function Home() {
         <p className="mt-6 text-center text-sm text-red-400">{error}</p>
       )}
 
-      {saju && zodiac && fortune && (
+      {person && fortune && (
         <div ref={resultRef} className="pt-16">
           <ResultSection
-            saju={saju}
-            zodiac={zodiac}
-            iljin={fortune.iljin}
+            person={person}
+            view={fortune.view}
             weekly={fortune.weekly}
-            weekSummary={fortune.weekSummary}
-            selectedDate={selectedDate}
-            onSelectedDateChange={setSelectedDate}
+            selectedDay={fortune.day}
+            todayDay={fortune.today}
+            onSelectedDayChange={setSelectedDay}
           />
         </div>
       )}

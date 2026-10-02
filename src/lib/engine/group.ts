@@ -1,0 +1,221 @@
+// 여러 사람(2~6명)의 관계 계산 — compute_group.py 의 main 이식.
+// 방향별 별점 행렬, 쌍별 구조, 3인 조합, 모임 전체의 판(삼합·방합·삼형)을 구한다.
+
+import {
+  aspect,
+  BANGHAP,
+  CANON,
+  EL_ORDER,
+  guiinOf,
+  PersonLike,
+  PILLAR_KO,
+  pairFacts,
+  PairFacts,
+  SAMHAP,
+  SAMHYEONG,
+  score,
+  ScoreResult,
+  sinsal,
+  Wuxing,
+} from "./relations";
+import { pyRound } from "./num";
+import { BirthMember, buildPerson, DEFAULT_OPTIONS, EngineOptions, PersonFacts } from "./natal";
+
+export interface MatrixCell extends ScoreResult {
+  guiin: string[];
+}
+
+export interface PairEntry {
+  names: [string, string];
+  sajuStars: { xToY: number; yToX: number; avg: number };
+  twoSystems: string;
+  stem: string[];
+  branch: string[];
+  sunAngle: { deg: number; aspect: string | null; orb: number | null };
+  crossSinsal: Record<string, string>;
+  /** 방향별 구조화 사실 (화면용) */
+  facts: { xy: PairFacts; yx: PairFacts };
+}
+
+export interface TrioFacts {
+  members: string[];
+  structures: string[];
+  ohaeng: Record<Wuxing, number>;
+  missing: Wuxing[];
+}
+
+export interface TrioWithStars extends TrioFacts {
+  innerStars: Record<string, number>;
+  innerTotal: number;
+  innerAvg: number;
+  receivedInTrio: Record<string, number>;
+  hub: string[];
+}
+
+export interface GroupFacts {
+  group: string;
+  reportDate: string;
+  basis: { lonCorrection: boolean; longitudeDefault: number; jasiMode: string };
+  people: PersonFacts[];
+  matrix: Record<string, MatrixCell>;
+  matrixSummary: { avg: number; received: Record<string, number>; given: Record<string, number> };
+  pairs: Record<string, PairEntry>;
+  trios: TrioWithStars[];
+  groupAll: TrioFacts;
+}
+
+export function trioFacts(members: PersonFacts[]): TrioFacts {
+  const names = members.map((m) => m.name);
+  const branches: { name: string; jj: string }[] = [];
+  for (const m of members) for (const k of Object.keys(m.pillars) as (keyof typeof m.pillars)[]) {
+    branches.push({ name: m.name, jj: m.pillars[k]!.jj });
+  }
+  const found: string[] = [];
+  const allb = new Set(branches.map((b) => b.jj));
+
+  const ownersOf = (grp: ReadonlySet<string>): Record<string, string[]> => {
+    const out: Record<string, string[]> = {};
+    for (const b of grp) out[b] = [...new Set(branches.filter((x) => x.jj === b).map((x) => x.name))].sort();
+    return out;
+  };
+  // 한 사람이 혼자 전부 가진 구조는 '그 사람의 원국' 이야기이므로 제외
+  const crossPerson = (own: Record<string, string[]>) => {
+    const people = new Set(Object.values(own).flat());
+    return ![...people].some((p) => Object.keys(own).every((b) => own[b].includes(p)));
+  };
+  const canonOf = (grp: ReadonlySet<string>) => CANON.get([...grp].sort().join(""))!;
+  const fmt = (own: Record<string, string[]>, canon: string) => [...canon].map((b) => `${b}:${own[b].join("/")}`).join(", ");
+  const subset = (grp: ReadonlySet<string>) => [...grp].every((b) => allb.has(b));
+
+  for (const { grp, el } of SAMHAP) {
+    if (subset(grp) && crossPerson(ownersOf(grp))) {
+      const c = canonOf(grp);
+      found.push(`삼합 ${c}(${el}) — ${fmt(ownersOf(grp), c)}`);
+    }
+  }
+  for (const { grp, el } of BANGHAP) {
+    if (subset(grp) && crossPerson(ownersOf(grp))) {
+      const c = canonOf(grp);
+      found.push(`방합 ${c}(${el}) — ${fmt(ownersOf(grp), c)}`);
+    }
+  }
+  for (const grp of SAMHYEONG) {
+    if (subset(grp) && crossPerson(ownersOf(grp))) {
+      const c = canonOf(grp);
+      found.push(`삼형 ${c} — ${fmt(ownersOf(grp), c)}`);
+    }
+  }
+  const oh = Object.fromEntries(EL_ORDER.map((e) => [e, members.reduce((s, m) => s + m.ohaeng[e], 0)])) as Record<Wuxing, number>;
+  return { members: names, structures: found, ohaeng: oh, missing: EL_ORDER.filter((e) => oh[e] === 0) };
+}
+
+/** 사주 평균 별점과 태양 각도로 두 체계의 겹침/갈림을 판정한다 (reference/group/scoring.md). */
+export function twoSystemsVerdict(aspectName: string | null, avg: number): string {
+  if (aspectName === "삼각" || aspectName === "육각") return avg >= 3.5 ? "겹침(좋음)" : avg <= 2.5 ? "갈림" : "보류";
+  if (aspectName === "사각" || aspectName === "대립") return avg <= 2.5 ? "겹침(긴장)" : avg >= 3.5 ? "갈림" : "보류";
+  return aspectName === null ? "해당 없음(주요 각 없음)" : "보류(합)";
+}
+
+function* combinations<T>(arr: T[], n: number): Generator<T[]> {
+  if (n === 0) {
+    yield [];
+    return;
+  }
+  for (let i = 0; i <= arr.length - n; i++) {
+    for (const rest of combinations(arr.slice(i + 1), n - 1)) yield [arr[i], ...rest];
+  }
+}
+
+function* permutations2<T>(arr: T[]): Generator<[T, T]> {
+  for (const x of arr) for (const y of arr) if (x !== y) yield [x, y];
+}
+
+const sumBy = <T,>(xs: T[], f: (x: T) => number) => xs.reduce((s, x) => s + f(x), 0);
+
+export function computeGroup(
+  cfg: { group?: string; members: BirthMember[] },
+  reportDate: string,
+  opts: EngineOptions = DEFAULT_OPTIONS
+): GroupFacts {
+  const onYear = Number(reportDate.slice(0, 4));
+  const P = cfg.members.map((m) => buildPerson(m, onYear, opts));
+  if (P.length < 2 || P.length > 6) throw new Error("인원은 2~6명만 지원합니다.");
+
+  const like = (p: PersonFacts): PersonLike => p;
+  const matrix: Record<string, MatrixCell> = {};
+  for (const [X, Y] of permutations2(P)) {
+    const pf = pairFacts(like(X), like(Y));
+    const g = guiinOf(like(X), like(Y));
+    matrix[`${X.name}→${Y.name}`] = { ...score(like(X), like(Y), pf, g), guiin: g };
+  }
+
+  const pairs: Record<string, PairEntry> = {};
+  for (const [X, Y] of combinations(P, 2) as Generator<[PersonFacts, PersonFacts]>) {
+    const pf = pairFacts(like(X), like(Y));
+    const pfYX = pairFacts(like(Y), like(X));
+    const ang = aspect(X.sun.longitude, Y.sun.longitude);
+    const sx = score(like(X), like(Y), pf, guiinOf(like(X), like(Y))).stars;
+    const sy = score(like(Y), like(X), pfYX, guiinOf(like(Y), like(X))).stars;
+    const avg = (sx + sy) / 2;
+    pairs[`${X.name}–${Y.name}`] = {
+      names: [X.name, Y.name],
+      sajuStars: { xToY: sx, yToX: sy, avg },
+      twoSystems: twoSystemsVerdict(ang[1], avg),
+      stem: pf.stem,
+      branch: pf.branch.map(
+        (b) => `${X.name} ${PILLAR_KO[b.x]}지 ${b.xb} – ${Y.name} ${PILLAR_KO[b.y]}지 ${b.yb}: ${b.rel.join(", ")}`
+      ),
+      sunAngle: { deg: ang[0], aspect: ang[1], orb: ang[2] },
+      crossSinsal: {
+        [`${Y.name} 일지 ${Y.pillars.day!.jj} → ${X.name}에게`]: sinsal(X.pillars.year!.jj, Y.pillars.day!.jj),
+        [`${X.name} 일지 ${X.pillars.day!.jj} → ${Y.name}에게`]: sinsal(Y.pillars.year!.jj, X.pillars.day!.jj),
+      },
+      facts: { xy: pf, yx: pfYX },
+    };
+  }
+
+  const cells = Object.values(matrix);
+  const received = Object.fromEntries(
+    P.map((Y) => [Y.name, sumBy(P.filter((X) => X !== Y), (X) => matrix[`${X.name}→${Y.name}`].stars)])
+  );
+  const given = Object.fromEntries(
+    P.map((X) => [X.name, sumBy(P.filter((Y) => Y !== X), (Y) => matrix[`${X.name}→${Y.name}`].stars)])
+  );
+
+  const trios: TrioWithStars[] = [];
+  if (P.length >= 3) {
+    for (const c of combinations(P, 3)) {
+      const t = trioFacts(c);
+      const innerStars: Record<string, number> = {};
+      for (const [X, Y] of permutations2(c)) innerStars[`${X.name}→${Y.name}`] = matrix[`${X.name}→${Y.name}`].stars;
+      const recv = Object.fromEntries(
+        c.map((Y) => [
+          Y.name,
+          sumBy(Object.entries(innerStars).filter(([k]) => k.endsWith(`→${Y.name}`)), ([, v]) => v),
+        ])
+      );
+      const total = sumBy(Object.values(innerStars), (v) => v);
+      const maxRecv = Math.max(...Object.values(recv));
+      trios.push({
+        ...t,
+        innerStars,
+        innerTotal: total,
+        innerAvg: pyRound(total / 6, 2),
+        receivedInTrio: recv,
+        hub: Object.entries(recv).filter(([, v]) => v === maxRecv).map(([n]) => n),
+      });
+    }
+  }
+
+  return {
+    group: cfg.group ?? "",
+    reportDate,
+    basis: { lonCorrection: opts.lonCorrection, longitudeDefault: 127.0, jasiMode: opts.jasiMode },
+    people: P,
+    matrix,
+    matrixSummary: { avg: pyRound(sumBy(cells, (v) => v.stars) / cells.length, 2), received, given },
+    pairs,
+    trios,
+    groupAll: trioFacts(P),
+  };
+}

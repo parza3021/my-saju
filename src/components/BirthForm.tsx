@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { BirthInput } from "@/lib/types";
-import PersonBirthFields, { DEFAULT_PERSON, personFormToBirthInput } from "./PersonBirthFields";
+import { BirthMember } from "@/lib/engine/natal";
+import PersonBirthFields, { DEFAULT_PERSON, personFormToMember } from "./PersonBirthFields";
 
-export default function BirthForm({ onSubmit }: { onSubmit: (input: BirthInput) => void }) {
+export default function BirthForm({ onSubmit }: { onSubmit: (input: BirthMember) => void }) {
   const [value, setValue] = useState(DEFAULT_PERSON);
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const input = personFormToBirthInput(value);
-    setError(input ? null : "생년월일을 올바르게 입력해주세요.");
+    const input = personFormToMember(value, "나");
+    setError(input ? null : "생년월일을 올바르게 입력해주세요. (음력은 해당 해에 있는 달·일인지도 확인해주세요.)");
     if (input) onSubmit(input);
   }
 

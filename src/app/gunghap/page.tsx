@@ -2,32 +2,31 @@
 
 import { useRef, useState } from "react";
 import GunghapResultView from "@/components/GunghapResultView";
-import PersonBirthFields, { DEFAULT_PERSON, personFormToBirthInput } from "@/components/PersonBirthFields";
+import PersonBirthFields, { DEFAULT_PERSON, personFormToMember } from "@/components/PersonBirthFields";
 import SiteNav from "@/components/SiteNav";
-import { analyzeGunghap } from "@/lib/gunghap";
-import { GunghapResult } from "@/lib/types";
+import { RELATION_KINDS, RelationKind } from "@/lib/content/relationKind";
+import { analyzeGunghap, GunghapResult } from "@/lib/gunghap";
 
 export default function GunghapPage() {
   const [person1, setPerson1] = useState(DEFAULT_PERSON);
   const [person2, setPerson2] = useState(DEFAULT_PERSON);
+  const [relationKind, setRelationKind] = useState<RelationKind>("연애");
   const [result, setResult] = useState<GunghapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const input1 = personFormToBirthInput(person1);
-    const input2 = personFormToBirthInput(person2);
+    const m1 = personFormToMember(person1, "사람 1");
+    const m2 = personFormToMember(person2, "사람 2");
 
-    if (!input1 || !input2) {
-      setError("두 분의 생년월일을 올바르게 입력해주세요.");
+    if (!m1 || !m2) {
+      setError("두 분의 생년월일을 올바르게 입력해주세요. (음력은 해당 해에 있는 달·일인지도 확인해주세요.)");
       return;
     }
 
     try {
-      const name1 = person1.name.trim() || "사람 1";
-      const name2 = person2.name.trim() || "사람 2";
-      const gunghap = analyzeGunghap(name1, input1, name2, input2);
+      const gunghap = analyzeGunghap(m1, m2, relationKind);
       setResult(gunghap);
       setError(null);
       requestAnimationFrame(() => {
@@ -56,6 +55,33 @@ export default function GunghapPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-6">
+        <fieldset>
+          <legend className="text-sm font-medium text-white/50 mb-3">두 사람의 관계</legend>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {RELATION_KINDS.map((kind) => (
+              <label
+                key={kind.value}
+                className={`cursor-pointer rounded-lg border px-3 py-3 text-center transition-colors ${
+                  relationKind === kind.value
+                    ? "border-amber-400 bg-amber-400/10 text-amber-300"
+                    : "border-white/10 bg-white/5 text-white/70 hover:border-white/30"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="relationKind"
+                  value={kind.value}
+                  checked={relationKind === kind.value}
+                  onChange={() => setRelationKind(kind.value)}
+                  className="sr-only"
+                />
+                <span className="block text-sm font-semibold">{kind.label}</span>
+                <span className="block text-xs text-white/40 mt-1">{kind.hint}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
         <div className="grid sm:grid-cols-2 gap-4">
           <PersonBirthFields
             title="사람 1"

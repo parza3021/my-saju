@@ -3,6 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* 오행 색 — saju-iljin-doc 스킬 style-block 의 어두운 팔레트 */
+  --mok: #63b389;
+  --hwa: #e27a70;
+  --to: #d6a34f;
+  --geum: #a6b0bc;
+  --su: #7e9ac8;
 }
 
 @theme inline {
