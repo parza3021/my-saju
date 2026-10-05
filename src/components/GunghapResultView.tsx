@@ -23,7 +23,7 @@ import {
   STARS,
   TWO_SYSTEMS_PLAIN,
 } from "@/lib/engine/plain";
-import { EL_ORDER, gwa, josa, PILLAR_KO, PosKo, Sinsal, Sipsin } from "@/lib/engine/relations";
+import { EL_ORDER, gwa, josa, PILLAR_KO, Sinsal, Sipsin } from "@/lib/engine/relations";
 import { zodiacByName } from "@/lib/zodiac";
 import { EL_VAR } from "./saju/colors";
 import EightCharGrid from "./saju/EightCharGrid";
@@ -96,11 +96,6 @@ function DirectionCard({ from, to, cell }: { from: PersonFacts; to: PersonFacts;
   );
 }
 
-function parseGuiin(s: string) {
-  const m = s.match(/^(\S+) (.)지 (\S) = (\S+)의 (천을귀인|문창귀인)$/);
-  return m ? { giver: m[1], pos: m[2] as PosKo, branch: m[3], receiver: m[4], name: m[5] } : null;
-}
-
 function verdictText(v: string, avg: number): string {
   switch (v) {
     case "겹침(좋음)":
@@ -125,7 +120,7 @@ export default function GunghapResultView({ result }: { result: GunghapResult })
   const goodN = branchHits.filter((x) => x.tone === "good").length + stemHits.filter((s) => s.kind === "합").length;
   const warnN = branchHits.filter((x) => x.tone === "warn").length + stemHits.filter((s) => s.kind === "충").length;
   const group = facts.groupAll;
-  const guiin = [...ab.guiin, ...ba.guiin].map(parseGuiin).filter((x): x is NonNullable<typeof x> => !!x);
+  const guiin = [...ab.guiin, ...ba.guiin];
   const sa = pair.sunAngle;
   const zA = zodiacByName(a.sun.sign);
   const zB = zodiacByName(b.sun.sign);
@@ -196,7 +191,7 @@ export default function GunghapResultView({ result }: { result: GunghapResult })
             <div className="mt-4 space-y-2">
               <p className="text-xs text-white/45">서로 다른 사람이 가진 글자 세 개가 모이면, 혼자일 때는 없던 한 팀의 기운이 생깁니다.</p>
               {group.structures.map((s) => (
-                <StructureLine key={s} text={s} verb="이 만들어집니다." />
+                <StructureLine key={s.kind + s.canon} s={s} verb="이 만들어집니다." />
               ))}
             </div>
           ) : (

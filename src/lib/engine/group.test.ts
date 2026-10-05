@@ -5,6 +5,7 @@ import { computeGroup } from "./group";
 import type { BirthMember } from "./natal";
 import { aspect, branchRelations, sinsal, sipsin, structuresWith, unseong } from "./relations";
 import { CHEONGAN } from "./manseryeok";
+import * as py from "./__fixtures__/pyFormat";
 
 // compute_group.py 가 만든 facts.json 과 같은 결과가 나오는지 대조한다.
 // 픽스처 재생성: python3 scripts/gen-fixtures.py <스킬 폴더>
@@ -54,7 +55,7 @@ describe("지지·십신·신살 표준표", () => {
     for (const [a, b, exp] of cases) expect(branchRelations(a, b), `${a}${b}`).toEqual(exp);
   });
   it("완성되는 삼합·방합·삼형 찾기", () => {
-    expect(structuresWith("자", { 신: ["가"], 진: ["나"] })).toEqual(["삼합 신자진(수) — 신: 가, 진: 나"]);
+    expect(structuresWith("자", { 신: ["가"], 진: ["나"] }).map(py.dailyStructure)).toEqual(["삼합 신자진(수) — 신: 가, 진: 나"]);
     expect(structuresWith("자", { 신: ["가"] })).toEqual([]);
   });
   it("십이운성 (갑목 장생=해, 을목 장생=오)", () => {
@@ -84,25 +85,26 @@ describe("그룹 계산이 compute_group.py 와 같다", () => {
         expect(p.ilgan).toEqual(e.ilgan);
         expect(p.ohaeng).toEqual(e.ohaeng);
         expect(p.natalSinsal).toEqual(e.natalSinsal);
-        expect(p.gilsin).toEqual(e.gilsin);
-        expect(p.internal).toEqual(e.internal);
+        expect(p.gilsin.map(py.gilsin)).toEqual(e.gilsin);
+        expect(py.internal(p)).toEqual(e.internal);
         expect(p.warnings).toEqual(e.warnings);
         expect(p.hasTime).toBe(e.hasTime);
         expect(p.sun).toEqual(e.sun);
         if (e.daewoon === null) expect(p.daewoon).toBeNull();
         else expect(p.daewoon).toMatchObject(e.daewoon);
-        expect(p.seun).toMatchObject(e.seun);
+        expect(p.seun.map((s) => ({ ...s, notes: py.seunNotes(p, s) }))).toMatchObject(e.seun);
       });
-      expect(got.matrix).toMatchObject(exp.matrix);
+      const matrix = Object.fromEntries(Object.entries(got.matrix).map(([k, c]) => [k, { ...c, guiin: c.guiin.map(py.guiin) }]));
+      expect(matrix).toMatchObject(exp.matrix);
       expect(Object.keys(got.matrix)).toEqual(Object.keys(exp.matrix));
       expect(Object.keys(got.pairs)).toEqual(Object.keys(exp.pairs));
       for (const [k, ep] of Object.entries<any>(exp.pairs)) {
         const gp = got.pairs[k];
-        expect({ sajuStars: gp.sajuStars, twoSystems: gp.twoSystems, stem: gp.stem, branch: gp.branch, sunAngle: gp.sunAngle, crossSinsal: gp.crossSinsal }, k).toEqual({
+        expect({ sajuStars: gp.sajuStars, twoSystems: gp.twoSystems, stem: py.pairStem(gp), branch: py.pairBranch(gp), sunAngle: gp.sunAngle, crossSinsal: gp.crossSinsal }, k).toEqual({
           sajuStars: ep.sajuStars, twoSystems: ep.twoSystems, stem: ep.stem, branch: ep.branch, sunAngle: ep.sunAngle, crossSinsal: ep.crossSinsal,
         });
       }
-      expect(got.groupAll).toEqual(exp.groupAll);
+      expect({ ...got.groupAll, structures: got.groupAll.structures.map(py.groupStructure) }).toEqual(exp.groupAll);
     });
   }
 });

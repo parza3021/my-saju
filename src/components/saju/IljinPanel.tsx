@@ -98,7 +98,7 @@ export default function IljinPanel({
             );
           })}
           {facts.structures.map((s) => (
-            <StructureLine key={s} text={s} lead="오늘 글자가 들어와 " verb="가 완성됩니다." whoLabel="가진 글자: " />
+            <StructureLine key={s.kind + s.canon} s={s} lead="오늘 글자가 들어와 " verb="가 완성됩니다." whoLabel="가진 글자: " />
           ))}
         </div>
       </div>

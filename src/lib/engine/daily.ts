@@ -28,6 +28,7 @@ import {
   sipsin,
   stemRelation,
   STEM_EL,
+  Structure,
   structuresWith,
   unseong,
   Wuxing,
@@ -148,7 +149,7 @@ export interface DailyFacts {
   sinsal: Sinsal;
   gilsin: string[];
   reactions: Reaction[];
-  structures: string[];
+  structures: Structure[];
   ohaeng: OhaengReport;
   hours: { jiji: string; pillar: string; kst: string }[];
   sky: SkyFacts;
@@ -156,7 +157,6 @@ export interface DailyFacts {
   sipsinToday: [Sipsin, Sipsin];
   /** 오늘을 가상 인물로 두고 같은 별점 공식으로 매긴 하루 별점 */
   dayScore: ScoreResult;
-  guiinToday: string[];
 }
 
 /** 오늘을 '일 기둥 하나뿐인 가상 인물'로 만든다. */
@@ -195,7 +195,6 @@ export function dailyFacts(P: PersonFacts, day: Day): DailyFacts {
   if (YANGIN[P.ilgan.cg] === g.jiji) gil.push("양인");
 
   const today = dayAsPerson(g);
-  const guiinToday = guiinOf(P, today);
   const [y, m, d] = [ymdOfDay(day).year, ymdOfDay(day).month, ymdOfDay(day).day];
 
   return {
@@ -213,8 +212,7 @@ export function dailyFacts(P: PersonFacts, day: Day): DailyFacts {
     sky: sky(day, P.sun.longitude),
     unseong: unseong(P.ilgan.cg, g.jiji),
     sipsinToday: [sipsin(igIdx, g.cg), sipsin(igIdx, branchMainStem(g.jiji))],
-    dayScore: score(P, today, pairFacts(P, today), guiinToday),
-    guiinToday,
+    dayScore: score(P, today, pairFacts(P, today), guiinOf(P, today)),
   };
 }
 

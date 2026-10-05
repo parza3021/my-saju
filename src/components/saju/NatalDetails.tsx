@@ -1,6 +1,6 @@
 import { PersonFacts } from "@/lib/engine/natal";
 import { GILSIN, POS, POS_LONG, relPlain, relTag, relTone, SINSAL, SINSAL_HANJA } from "@/lib/engine/plain";
-import { PILLAR_KO, PILLAR_ORDER, PosKo, Sinsal } from "@/lib/engine/relations";
+import { PILLAR_KO, PILLAR_ORDER, Sinsal } from "@/lib/engine/relations";
 import { Badge, Jargon } from "./ui";
 
 /** 원국 안의 끌림·부딪힘, 자리마다 타고난 기운(신살), 타고난 복(길신) */
@@ -53,15 +53,12 @@ export default function NatalDetails({ person }: { person: PersonFacts }) {
           {person.gilsin.length === 0 && (
             <p className="text-white/55">여덟 글자 안에는 없습니다. 다른 사람에게서 받는 복은 궁합에서 볼 수 있습니다.</p>
           )}
-          {person.gilsin.map((g) => {
-            const [pos, , name] = g.split(" ");
-            return (
-              <p key={g} className="text-white/75">
-                {GILSIN[name]}
-                <Jargon>{name}</Jargon> — {POS[pos[0] as PosKo]} 자리
-              </p>
-            );
-          })}
+          {person.gilsin.map((g) => (
+            <p key={g.pos + g.name} className="text-white/75">
+              {GILSIN[g.name]}
+              <Jargon>{g.name}</Jargon> — {POS[g.pos]} 자리
+            </p>
+          ))}
         </dd>
       </div>
     </dl>

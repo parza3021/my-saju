@@ -5,6 +5,7 @@ import { dayFromYmd } from "./clock";
 import { dailyFacts, ganzhiForDate } from "./daily";
 import { MS_MIN } from "./clock";
 import { personFacts } from "./natal";
+import * as py from "./__fixtures__/pyFormat";
 
 // compute_iljin.py 의 함수들이 만든 값과 대조한다 (가상 인물 6명 × 16일).
 // 픽스처 재생성: python3 scripts/gen-fixtures.py <스킬 폴더>
@@ -32,7 +33,7 @@ describe("일진 계산이 compute_iljin.py 와 같다", () => {
       expect(f.sinsal).toBe(c.sinsal);
       expect(f.gilsin).toEqual(c.gilsin);
       expect(f.reactions.map((r) => ({ pos: r.pos, kind: r.kind, natal: r.natal, rel: r.rel }))).toEqual(c.reactions);
-      expect(f.structures).toEqual(c.structures);
+      expect(f.structures.map(py.dailyStructure)).toEqual(c.structures);
       expect(f.unseong).toBe(c.unseong);
       expect(f.sipsinToday).toEqual(c.sipsinToday);
       expect(f.hours).toEqual(c.hours);

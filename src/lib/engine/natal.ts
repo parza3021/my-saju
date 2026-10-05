@@ -21,12 +21,12 @@ import {
   CHEONEUL,
   EL_ORDER,
   HONGYEOM,
-  josa,
   MUNCHANG,
   PILLAR_KO,
   PILLAR_ORDER,
   PillarFact,
   PillarKey,
+  PosKo,
   round1,
   sinsal,
   Sinsal,
@@ -102,9 +102,15 @@ export interface SeunFact {
   year: number;
   ganzhi: string;
   sinsal: Sinsal;
-  notes: string[];
   sipsin: Sipsin;
   items: SeunItem[];
+}
+
+/** pos 자리 지지(branch)가 일간 기준 길신(name) */
+export interface NatalGilsin {
+  pos: PosKo;
+  branch: string;
+  name: "천을귀인" | "문창귀인" | "양인" | "홍염";
 }
 
 export interface PersonFacts {
@@ -118,8 +124,7 @@ export interface PersonFacts {
   ilgan: { cg: string; element: Wuxing; yinyang: "양" | "음" };
   ohaeng: Record<Wuxing, number>;
   natalSinsal: Record<string, Sinsal>;
-  gilsin: string[];
-  internal: string[];
+  gilsin: NatalGilsin[];
   internalHits: InternalHit[];
   /** 기둥별 천간 십신(일간 자신은 null) · 지지 십신(지지의 본기 천간 기준이 아니라 일간과의 오행·음양 관계는 쓰지 않는다) */
   stemSipsin: Partial<Record<PillarKey, Sipsin | null>>;
@@ -179,30 +184,26 @@ export function personFacts(m: BirthMember, opts: EngineOptions = DEFAULT_OPTION
   const natalSinsal: Record<string, Sinsal> = {};
   for (const k of keys) natalSinsal[PILLAR_KO[k]] = sinsal(yb, pillars[k]!.jj);
 
-  const gilsin: string[] = [];
+  const gilsin: NatalGilsin[] = [];
+  const tables: [NatalGilsin["name"], Record<string, string>][] = [
+    ["천을귀인", CHEONEUL],
+    ["문창귀인", MUNCHANG],
+    ["양인", YANGIN],
+    ["홍염", HONGYEOM],
+  ];
   for (const k of keys) {
     const b = pillars[k]!.jj;
-    const tables: [string, Record<string, string>][] = [
-      ["천을귀인", CHEONEUL],
-      ["문창귀인", MUNCHANG],
-      ["양인", YANGIN],
-      ["홍염", HONGYEOM],
-    ];
     for (const [name, table] of tables) {
-      if ((table[ig] ?? "").includes(b)) gilsin.push(`${PILLAR_KO[k]}지 ${b} ${name}`);
+      if ((table[ig] ?? "").includes(b)) gilsin.push({ pos: PILLAR_KO[k], branch: b, name });
     }
   }
 
-  const internal: string[] = [];
   const internalHits: InternalHit[] = [];
   for (let i = 0; i < keys.length; i++) {
     for (let j = i + 1; j < keys.length; j++) {
       const [k1, k2] = [keys[i], keys[j]];
       const rel = branchRelations(pillars[k1]!.jj, pillars[k2]!.jj).filter((x) => x !== "동일");
-      if (rel.length) {
-        internal.push(`${PILLAR_KO[k1]}지 ${pillars[k1]!.jj}–${PILLAR_KO[k2]}지 ${pillars[k2]!.jj}: ${rel.join(", ")}`);
-        internalHits.push({ k1, k2, b1: pillars[k1]!.jj, b2: pillars[k2]!.jj, rel });
-      }
+      if (rel.length) internalHits.push({ k1, k2, b1: pillars[k1]!.jj, b2: pillars[k2]!.jj, rel });
     }
   }
 
@@ -244,7 +245,6 @@ export function personFacts(m: BirthMember, opts: EngineOptions = DEFAULT_OPTION
     ohaeng,
     natalSinsal,
     gilsin,
-    internal,
     internalHits,
     stemSipsin,
     unseong: uns,
@@ -261,27 +261,17 @@ export function yearly(P: PersonFacts, year: number): SeunFact {
   const cg = CHEONGAN[idx % 10];
   const jj = JIJI[idx % 12];
   const ss = sipsin(cgIndex(P.ilgan.cg), idx % 10);
-  const notes = [`세운 천간 ${josa(cg, "은", "는")} ${P.name}에게 ${ss}`];
   const items: SeunItem[] = [];
   for (const k of PILLAR_ORDER) {
     const p = P.pillars[k];
     if (!p) continue;
     const sr = stemRelation(cg, p.cg).filter((x) => x !== "복음");
-    if (sr.length) {
-      const rel = sr[0].startsWith("천간합") ? ["천간합"] : ["천간충"];
-      notes.push(
-        `${PILLAR_KO[k]}간 ${josa(p.cg, "과", "와")} ${rel[0] === "천간합" ? `천간합(${sr[0].slice(4, -1)})` : "천간충"}`
-      );
-      items.push({ pos: PILLAR_KO[k], kind: "cg", a: cg, b: p.cg, rel });
-    }
+    if (sr.length) items.push({ pos: PILLAR_KO[k], kind: "cg", a: cg, b: p.cg, rel: [sr[0].startsWith("천간합") ? "천간합" : "천간충"] });
     let rel = branchRelations(jj, p.jj).filter((x) => x !== "동일");
     if (jj === p.jj) rel = ["복음", ...rel];
-    if (rel.length) {
-      notes.push(`${PILLAR_KO[k]}지 ${josa(p.jj, "과", "와")} ${rel.join(", ")}`);
-      items.push({ pos: PILLAR_KO[k], kind: "jj", a: jj, b: p.jj, rel });
-    }
+    if (rel.length) items.push({ pos: PILLAR_KO[k], kind: "jj", a: jj, b: p.jj, rel });
   }
-  return { year, ganzhi: cg + jj, sinsal: sinsal(P.pillars.year!.jj, jj), notes, sipsin: ss, items };
+  return { year, ganzhi: cg + jj, sinsal: sinsal(P.pillars.year!.jj, jj), sipsin: ss, items };
 }
 
 /** 지금 대운과 다음 대운. 성별을 받지 않았으면 null. */

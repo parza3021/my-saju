@@ -1,31 +1,33 @@
 import { STRUCT_EL } from "@/lib/engine/plain";
+import type { Structure } from "@/lib/engine/relations";
 import { Badge, Jargon } from "./ui";
 
-/** '삼합 해묘미(목) — 해:가/나, …' 꼴의 엔진 문장을 배지 + 쉬운 말로 보여 준다 */
+/** 세 글자가 모여 생기는 판(삼합·방합·삼형)을 배지 + 쉬운 말로 보여 준다 */
 export default function StructureLine({
-  text,
+  s,
   lead = "",
   verb,
   whoLabel = "",
 }: {
-  text: string;
+  s: Structure;
   lead?: string;
   verb: string;
   whoLabel?: string;
 }) {
-  const [head, who] = text.split(" — ");
-  const m = head.match(/^(삼합|방합|삼형) (\S+?)(?:\((.)\))?$/);
   return (
     <div className="flex gap-2 items-start">
-      <Badge tone={m?.[1] === "삼형" ? "warn" : "good"}>{m?.[1]}</Badge>
+      <Badge tone={s.kind === "삼형" ? "warn" : "good"}>{s.kind}</Badge>
       <p className="text-sm text-white/70 leading-relaxed">
         {lead}
-        {m?.[3] ? `${STRUCT_EL[m[3]]} 팀` : "서로 긁는 세 글자"}
+        {s.el ? `${STRUCT_EL[s.el]} 팀` : "서로 긁는 세 글자"}
         {verb}
-        <Jargon>{head}</Jargon>
+        <Jargon>
+          {s.kind} {s.canon}
+          {s.el && `(${s.el})`}
+        </Jargon>
         <span className="block text-xs text-white/40">
           {whoLabel}
-          {who.replace(/\//g, "·")}
+          {s.owners.map(([b, names]) => `${b}: ${names.join("·")}`).join(", ")}
         </span>
       </p>
     </div>

@@ -198,8 +198,6 @@ export interface BranchHit {
 }
 
 export interface PairFacts {
-  /** 파이썬 출력과 같은 문장 형태 (대조·로그용) */
-  stem: string[];
   stemHits: StemHit[];
   branch: BranchHit[];
   ilganHap: boolean;
@@ -208,7 +206,6 @@ export interface PairFacts {
 
 /** X가 Y를 볼 때(방향성) + 둘 사이 구조(대칭). */
 export function pairFacts(X: PersonLike, Y: PersonLike): PairFacts {
-  const stem: string[] = [];
   const stemHits: StemHit[] = [];
   for (const k1 of keysOf(X)) {
     const p1 = X.pillars[k1]!;
@@ -216,13 +213,8 @@ export function pairFacts(X: PersonLike, Y: PersonLike): PairFacts {
       const p2 = Y.pillars[k2]!;
       const p = pk(p1.cg, p2.cg);
       const hap = STEM_HAP.get(p);
-      if (hap) {
-        stem.push(`${X.name} ${PILLAR_KO[k1]}간 ${p1.cg} – ${Y.name} ${PILLAR_KO[k2]}간 ${p2.cg}: 천간합(${hap})`);
-        stemHits.push({ xKey: k1, yKey: k2, xCg: p1.cg, yCg: p2.cg, kind: "합", element: hap });
-      } else if (STEM_CHUNG.has(p)) {
-        stem.push(`${X.name} ${PILLAR_KO[k1]}간 ${p1.cg} – ${Y.name} ${PILLAR_KO[k2]}간 ${p2.cg}: 천간충`);
-        stemHits.push({ xKey: k1, yKey: k2, xCg: p1.cg, yCg: p2.cg, kind: "충", element: null });
-      }
+      if (hap) stemHits.push({ xKey: k1, yKey: k2, xCg: p1.cg, yCg: p2.cg, kind: "합", element: hap });
+      else if (STEM_CHUNG.has(p)) stemHits.push({ xKey: k1, yKey: k2, xCg: p1.cg, yCg: p2.cg, kind: "충", element: null });
     }
   }
   const branch: BranchHit[] = [];
@@ -235,17 +227,27 @@ export function pairFacts(X: PersonLike, Y: PersonLike): PairFacts {
     }
   }
   const pr = pk(X.ilgan.cg, Y.ilgan.cg);
-  return { stem, stemHits, branch, ilganHap: STEM_HAP.has(pr), ilganChung: STEM_CHUNG.has(pr) };
+  return { stemHits, branch, ilganHap: STEM_HAP.has(pr), ilganChung: STEM_CHUNG.has(pr) };
+}
+
+/** giver의 pos 자리 지지(branch)가 receiver에게 귀인 자리다 */
+export interface Guiin {
+  giver: string;
+  pos: PosKo;
+  branch: string;
+  receiver: string;
+  name: "천을귀인" | "문창귀인";
 }
 
 /** Y의 지지가 X에게 어떤 길신 자리인가 (Y가 X의 귀인). */
-export function guiinOf(X: PersonLike, Y: PersonLike): string[] {
-  const out: string[] = [];
+export function guiinOf(X: PersonLike, Y: PersonLike): Guiin[] {
+  const out: Guiin[] = [];
   const ig = X.ilgan.cg;
   for (const k of keysOf(Y)) {
-    const p = Y.pillars[k]!;
-    if (CHEONEUL[ig].includes(p.jj)) out.push(`${Y.name} ${PILLAR_KO[k]}지 ${p.jj} = ${X.name}의 천을귀인`);
-    if (p.jj === MUNCHANG[ig]) out.push(`${Y.name} ${PILLAR_KO[k]}지 ${p.jj} = ${X.name}의 문창귀인`);
+    const { jj } = Y.pillars[k]!;
+    const at = { giver: Y.name, pos: PILLAR_KO[k], branch: jj, receiver: X.name };
+    if (CHEONEUL[ig].includes(jj)) out.push({ ...at, name: "천을귀인" });
+    if (jj === MUNCHANG[ig]) out.push({ ...at, name: "문창귀인" });
   }
   return out;
 }
@@ -264,7 +266,7 @@ const NEG_RELS = ["형", "파", "해", "원진", "자형"];
 const fmtSigned = (n: number) => (n >= 0 ? `+${n}` : `${n}`); // 파이썬 f"{x:+g}"
 
 /** reference/scoring.md 공식. X가 Y를 볼 때의 별점(1~5). */
-export function score(X: PersonLike, Y: PersonLike, pf: PairFacts, guiinXY: string[]): ScoreResult {
+export function score(X: PersonLike, Y: PersonLike, pf: PairFacts, guiinXY: Guiin[]): ScoreResult {
   const ss = sipsin(cgIndex(X.ilgan.cg), cgIndex(Y.ilgan.cg));
   const base = SIPSIN_BASE[ss];
   let s = 3.0 + base;
@@ -340,25 +342,34 @@ export function round1(x: number): number {
   return pyRound(x, 1);
 }
 
+/** 세 글자가 모여 생기는 판. owners 는 [글자, 그 글자를 가진 사람들] (canon 순서) */
+export interface Structure {
+  kind: "삼합" | "방합" | "삼형";
+  canon: string;
+  el: Wuxing | null;
+  owners: [string, string[]][];
+}
+
+/** 삼합 → 방합 → 삼형 순서 (판정·표시 순서) */
+export const STRUCTURE_GROUPS: { kind: Structure["kind"]; grp: ReadonlySet<string>; el: Wuxing | null }[] = [
+  ...SAMHAP.map((s) => ({ kind: "삼합" as const, grp: s.grp, el: s.el })),
+  ...BANGHAP.map((s) => ({ kind: "방합" as const, grp: s.grp, el: s.el })),
+  ...SAMHYEONG.map((grp) => ({ kind: "삼형" as const, grp, el: null })),
+];
+
+export const canonOf = (grp: ReadonlySet<string>) => CANON.get(canonKey(grp))!;
+
 /**
  * branch(오늘 지지)가 끼어 완성되는 삼합·방합·삼형.
  * owners: {지지: [가진 사람...]}. 오늘 글자 외 두 글자를 누군가 가져야 성립.
  */
-export function structuresWith(branch: string, owners: Record<string, string[]>): string[] {
-  const out: string[] = [];
-  const groups: { kind: string; grp: ReadonlySet<string>; tail: string }[] = [
-    ...SAMHAP.map((s) => ({ kind: "삼합", grp: s.grp, tail: `(${s.el})` })),
-    ...BANGHAP.map((s) => ({ kind: "방합", grp: s.grp, tail: `(${s.el})` })),
-    ...SAMHYEONG.map((grp) => ({ kind: "삼형", grp, tail: "" })),
-  ];
-  for (const { kind, grp, tail } of groups) {
+export function structuresWith(branch: string, owners: Record<string, string[]>): Structure[] {
+  const out: Structure[] = [];
+  for (const { kind, grp, el } of STRUCTURE_GROUPS) {
     if (!grp.has(branch)) continue;
-    const canon = CANON.get(canonKey(grp))!;
+    const canon = canonOf(grp);
     const rest = [...canon].filter((b) => b !== branch);
-    if (rest.every((b) => owners[b]?.length)) {
-      const who = rest.map((b) => `${b}: ${owners[b].join("·")}`).join(", ");
-      out.push(`${kind} ${canon}${tail} — ${who}`);
-    }
+    if (rest.every((b) => owners[b]?.length)) out.push({ kind, canon, el, owners: rest.map((b) => [b, owners[b]]) });
   }
   return out;
 }

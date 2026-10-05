@@ -1,44 +1,41 @@
 // 여러 사람(2~6명)의 관계 계산 — compute_group.py 의 main 이식.
-// 방향별 별점 행렬, 쌍별 구조, 3인 조합, 모임 전체의 판(삼합·방합·삼형)을 구한다.
+// 방향별 별점 행렬, 쌍별 구조, 모임 전체의 판(삼합·방합·삼형)을 구한다.
 
 import {
   aspect,
-  BANGHAP,
-  CANON,
+  canonOf,
   EL_ORDER,
+  Guiin,
   guiinOf,
   PersonLike,
-  PILLAR_KO,
   pairFacts,
   PairFacts,
-  SAMHAP,
-  SAMHYEONG,
   score,
   ScoreResult,
   sinsal,
+  Structure,
+  STRUCTURE_GROUPS,
   Wuxing,
 } from "./relations";
 import { BirthMember, buildPerson, DEFAULT_OPTIONS, EngineOptions, PersonFacts } from "./natal";
 
 export interface MatrixCell extends ScoreResult {
-  guiin: string[];
+  guiin: Guiin[];
 }
 
 export interface PairEntry {
   names: [string, string];
   sajuStars: { xToY: number; yToX: number; avg: number };
   twoSystems: string;
-  stem: string[];
-  branch: string[];
   sunAngle: { deg: number; aspect: string | null; orb: number | null };
   crossSinsal: Record<string, string>;
-  /** 방향별 구조화 사실 (화면용) */
+  /** 방향별 천간·지지 반응 */
   facts: { xy: PairFacts; yx: PairFacts };
 }
 
 export interface TrioFacts {
   members: string[];
-  structures: string[];
+  structures: Structure[];
   ohaeng: Record<Wuxing, number>;
   missing: Wuxing[];
 }
@@ -59,8 +56,7 @@ export function trioFacts(members: PersonFacts[]): TrioFacts {
   for (const m of members) for (const k of Object.keys(m.pillars) as (keyof typeof m.pillars)[]) {
     branches.push({ name: m.name, jj: m.pillars[k]!.jj });
   }
-  const found: string[] = [];
-  const allb = new Set(branches.map((b) => b.jj));
+  const found: Structure[] = [];
 
   const ownersOf = (grp: ReadonlySet<string>): Record<string, string[]> => {
     const out: Record<string, string[]> = {};
@@ -72,27 +68,11 @@ export function trioFacts(members: PersonFacts[]): TrioFacts {
     const people = new Set(Object.values(own).flat());
     return ![...people].some((p) => Object.keys(own).every((b) => own[b].includes(p)));
   };
-  const canonOf = (grp: ReadonlySet<string>) => CANON.get([...grp].sort().join(""))!;
-  const fmt = (own: Record<string, string[]>, canon: string) => [...canon].map((b) => `${b}:${own[b].join("/")}`).join(", ");
-  const subset = (grp: ReadonlySet<string>) => [...grp].every((b) => allb.has(b));
-
-  for (const { grp, el } of SAMHAP) {
-    if (subset(grp) && crossPerson(ownersOf(grp))) {
-      const c = canonOf(grp);
-      found.push(`삼합 ${c}(${el}) — ${fmt(ownersOf(grp), c)}`);
-    }
-  }
-  for (const { grp, el } of BANGHAP) {
-    if (subset(grp) && crossPerson(ownersOf(grp))) {
-      const c = canonOf(grp);
-      found.push(`방합 ${c}(${el}) — ${fmt(ownersOf(grp), c)}`);
-    }
-  }
-  for (const grp of SAMHYEONG) {
-    if (subset(grp) && crossPerson(ownersOf(grp))) {
-      const c = canonOf(grp);
-      found.push(`삼형 ${c} — ${fmt(ownersOf(grp), c)}`);
-    }
+  for (const { kind, grp, el } of STRUCTURE_GROUPS) {
+    const own = ownersOf(grp);
+    if (Object.values(own).some((ns) => !ns.length) || !crossPerson(own)) continue;
+    const canon = canonOf(grp);
+    found.push({ kind, canon, el, owners: [...canon].map((b) => [b, own[b]]) });
   }
   const oh = Object.fromEntries(EL_ORDER.map((e) => [e, members.reduce((s, m) => s + m.ohaeng[e], 0)])) as Record<Wuxing, number>;
   return { members: names, structures: found, ohaeng: oh, missing: EL_ORDER.filter((e) => oh[e] === 0) };
@@ -148,10 +128,6 @@ export function computeGroup(
       names: [X.name, Y.name],
       sajuStars: { xToY: sx, yToX: sy, avg },
       twoSystems: twoSystemsVerdict(ang[1], avg),
-      stem: pf.stem,
-      branch: pf.branch.map(
-        (b) => `${X.name} ${PILLAR_KO[b.x]}지 ${b.xb} – ${Y.name} ${PILLAR_KO[b.y]}지 ${b.yb}: ${b.rel.join(", ")}`
-      ),
       sunAngle: { deg: ang[0], aspect: ang[1], orb: ang[2] },
       crossSinsal: {
         [`${Y.name} 일지 ${Y.pillars.day!.jj} → ${X.name}에게`]: sinsal(X.pillars.year!.jj, Y.pillars.day!.jj),
