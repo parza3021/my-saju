@@ -4,6 +4,7 @@ import { describeRelationInsight, RelationInsight, RelationKind } from "./conten
 import { describeZodiacCompat } from "./content/zodiacCompat";
 import { currentYearKst } from "./analysis";
 import { computeGroup, GroupFacts, MatrixCell, PairEntry } from "./engine/group";
+import { elKo } from "./engine/plain";
 import { BirthMember, PersonFacts } from "./engine/natal";
 
 export interface GunghapResult {
@@ -18,8 +19,6 @@ export interface GunghapResult {
   zodiacCompat: string;
 }
 
-const EL_PLAIN_TO_COMPAT: Record<string, string> = { 공기: "바람" };
-
 export function analyzeGunghap(m1: BirthMember, m2: BirthMember, kind: RelationKind): GunghapResult {
   // 이름이 같으면 방향별 표의 키가 겹치므로 구분한다
   const members = m1.name === m2.name ? [m1, { ...m2, name: `${m2.name}(2)` }] : [m1, m2];
@@ -29,7 +28,6 @@ export function analyzeGunghap(m1: BirthMember, m2: BirthMember, kind: RelationK
   const ab = facts.matrix[`${a.name}→${b.name}`];
   const ba = facts.matrix[`${b.name}→${a.name}`];
   const pair = facts.pairs[`${a.name}–${b.name}`];
-  const compat = (el: string) => EL_PLAIN_TO_COMPAT[el] ?? el;
 
   return {
     kind,
@@ -40,6 +38,6 @@ export function analyzeGunghap(m1: BirthMember, m2: BirthMember, kind: RelationK
     ba,
     pair,
     insight: describeRelationInsight(kind, a, b, pair, ab.stars, ba.stars),
-    zodiacCompat: describeZodiacCompat(compat(a.sun.element), compat(b.sun.element)),
+    zodiacCompat: describeZodiacCompat(elKo(a.sun.element), elKo(b.sun.element)),
   };
 }

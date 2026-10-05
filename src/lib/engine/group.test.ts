@@ -95,7 +95,6 @@ describe("그룹 계산이 compute_group.py 와 같다", () => {
       });
       expect(got.matrix).toMatchObject(exp.matrix);
       expect(Object.keys(got.matrix)).toEqual(Object.keys(exp.matrix));
-      expect(got.matrixSummary).toEqual(exp.matrixSummary);
       expect(Object.keys(got.pairs)).toEqual(Object.keys(exp.pairs));
       for (const [k, ep] of Object.entries<any>(exp.pairs)) {
         const gp = got.pairs[k];
@@ -103,7 +102,6 @@ describe("그룹 계산이 compute_group.py 와 같다", () => {
           sajuStars: ep.sajuStars, twoSystems: ep.twoSystems, stem: ep.stem, branch: ep.branch, sunAngle: ep.sunAngle, crossSinsal: ep.crossSinsal,
         });
       }
-      expect(got.trios).toEqual(exp.trios);
       expect(got.groupAll).toEqual(exp.groupAll);
     });
   }

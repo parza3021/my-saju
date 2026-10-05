@@ -10,6 +10,7 @@ import { PersonFacts } from "./natal";
 import {
   branchRelations,
   BRANCH_EL,
+  cgIndex,
   CHEONEUL,
   EL_ORDER,
   guiinOf,
@@ -96,27 +97,11 @@ export function reactions(P: PersonFacts, g: DayGanzhi): Reaction[] {
   return out;
 }
 
-/** '월지 사: 신사 육합(수)·형·파' 꼴. 복음은 '복음(같은 글자)'. */
-export function fmtReaction(h: Reaction, todayChar: string): string {
-  if (h.rel.length === 1 && h.rel[0] === "복음") return `${h.pos}${h.kind} ${h.natal}: 복음(같은 글자)`;
-  const names = h.rel.map((r) => {
-    const base = r.split("(")[0];
-    if (base === "해") return "해(害)";
-    if (base === "천간충") return "충";
-    if (base === "천간합") return r.replace("천간합", "합");
-    return r;
-  });
-  const lead = names.includes("복음") ? "복음 · " : "";
-  return `${h.pos}${h.kind} ${h.natal}: ${lead}${todayChar}${h.natal} ${names.filter((n) => n !== "복음").join("·")}`;
-}
-
 export interface OhaengRow {
   prev: number;
   today: number;
   out: string[];
   in: string[];
-  unchangedDays: number;
-  changedAfterDays: number | null;
 }
 
 export interface OhaengReport {
@@ -133,7 +118,7 @@ function ohaengOn(P: PersonFacts, day: Day): Record<Wuxing, number> {
   return oh;
 }
 
-/** 원국 + 그날 두 글자의 오행 개수와 어제 대비 증감, 변동 없이 이어진 일수. */
+/** 원국 + 그날 두 글자의 오행 개수와 어제 대비 증감. */
 export function ohaengReport(P: PersonFacts, day: Day): OhaengReport {
   const today = ohaengOn(P, day);
   const prev = ohaengOn(P, day - 1);
@@ -149,34 +134,15 @@ export function ohaengReport(P: PersonFacts, day: Day): OhaengReport {
       [g.cheongan, g.cheonganOhaeng],
       [g.jiji, g.jijiOhaeng],
     ].filter(([, el]) => el === e).map(([c]) => c);
-    // 연속 무변동 일수 / 직전 변동 이후 간격
-    let k = 0;
-    while (k < 120 && ohaengOn(P, day - k)[e] === ohaengOn(P, day - k - 1)[e]) k++;
-    let stay = 0;
-    let gap: number | null = null;
-    if (today[e] === prev[e]) {
-      stay = k; // 오늘 포함 k일째 변동 없음
-    } else {
-      let j = 1;
-      while (j < 120 && ohaengOn(P, day - j)[e] === ohaengOn(P, day - j - 1)[e]) j++;
-      gap = j; // j일 만의 변동
-    }
-    rows[e] = { prev: prev[e], today: today[e], out: outs, in: ins, unchangedDays: stay, changedAfterDays: gap };
+    rows[e] = { prev: prev[e], today: today[e], out: outs, in: ins };
   }
   return { rows, total: Object.values(today).reduce((a, b) => a + b, 0), natal: { ...P.ohaeng } };
-}
-
-export function koreanCount(n: number): string {
-  const m: Record<number, string> = { 1: "하루", 2: "이틀", 3: "사흘", 4: "나흘", 5: "닷새", 6: "엿새", 7: "이레", 8: "여드레", 9: "아흐레", 10: "열흘" };
-  return m[n] ?? `${n}일`;
 }
 
 export interface DailyFacts {
   day: Day;
   date: { year: number; month: number; day: number; weekday: string };
   ganzhi: DayGanzhi;
-  prev: DayGanzhi;
-  next: DayGanzhi;
   yearMonth: { year: string; month: string; jieName: string; jieKst: number };
   nextTerm: [string, number];
   sinsal: Sinsal;
@@ -205,7 +171,7 @@ export function dayAsPerson(g: DayGanzhi): PersonLike {
 export function dailyFacts(P: PersonFacts, day: Day): DailyFacts {
   const g = ganzhiForDate(day);
   const ym = yearMonthPillars(day);
-  const igIdx = CHEONGAN.indexOf(P.ilgan.cg as (typeof CHEONGAN)[number]);
+  const igIdx = cgIndex(P.ilgan.cg);
 
   // 원국 지지 + 세운·월운 → 오늘 글자가 끼어 완성되는 판
   const owners: Record<string, string[]> = {};
@@ -236,8 +202,6 @@ export function dailyFacts(P: PersonFacts, day: Day): DailyFacts {
     day,
     date: { year: y, month: m, day: d, weekday: WEEKDAYS_MON0[weekdayMon0(day)] },
     ganzhi: g,
-    prev: ganzhiForDate(day - 1),
-    next: ganzhiForDate(day + 1),
     yearMonth: ym,
     nextTerm: nextTerm(day),
     sinsal: sinsal(P.pillars.year!.jj, g.jiji),

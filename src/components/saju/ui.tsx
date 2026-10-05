@@ -33,12 +33,15 @@ export function Jargon({ children }: { children: ReactNode }) {
   return <span className="text-white/40 text-[0.85em] ml-1">({children})</span>;
 }
 
-export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "good" | "warn" | "info" | "neutral" | "amber" }) {
+const AMBER = "bg-amber-400/20 text-amber-300 border-amber-400/30";
+
+export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "good" | "warn" | "info" | "neutral" | "amber" | "mixed" }) {
   const cls = {
     good: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
     warn: "bg-red-500/20 text-red-300 border-red-500/30",
     info: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
-    amber: "bg-amber-400/20 text-amber-300 border-amber-400/30",
+    amber: AMBER,
+    mixed: AMBER,
     neutral: "bg-white/10 text-white/60 border-white/15",
   }[tone];
   return <span className={`inline-block shrink-0 whitespace-nowrap text-xs rounded-full border px-2 py-0.5 ${cls}`}>{children}</span>;

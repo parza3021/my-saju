@@ -1,7 +1,7 @@
 // 한 사람의 원국 사실 — compute_group.py 의 person_facts · yearly · current_daewoon 이식.
 // 문서(화면)의 모든 사주·별자리 사실(기둥, 합충형파해, 십신, 귀인, 대운, 세운, 황경)은 여기 출력만 근거로 쓴다.
 
-import { dayToMs, fields, mk, Ms, MS_MIN } from "./clock";
+import { dayFromYmd, dayToMs, fields, mod, Ms, MS_HOUR, MS_MIN } from "./clock";
 import { pyRound } from "./num";
 import {
   CHEONGAN,
@@ -17,6 +17,7 @@ import {
 } from "./manseryeok";
 import {
   branchRelations,
+  cgIndex,
   CHEONEUL,
   EL_ORDER,
   HONGYEOM,
@@ -131,12 +132,8 @@ export interface PersonFacts {
 }
 
 function birthMs(m: BirthMember, hasTime: boolean): Ms {
-  const minute = m.minute ?? 0;
-  if ((m.calendar ?? "solar") === "lunar") {
-    const sd = lunarToSolar(m.year, m.month, m.day, m.leap ?? false);
-    return dayToMs(sd) + (hasTime ? m.hour! : 12) * 3_600_000 + (hasTime ? minute : 0) * MS_MIN;
-  }
-  return mk(m.year, m.month, m.day, hasTime ? m.hour! : 12, hasTime ? minute : 0);
+  const day = m.calendar === "lunar" ? lunarToSolar(m.year, m.month, m.day, m.leap ?? false) : dayFromYmd(m.year, m.month, m.day);
+  return hasTime ? dayToMs(day, m.hour!, m.minute ?? 0) : dayToMs(day, 12);
 }
 
 export function personFacts(m: BirthMember, opts: EngineOptions = DEFAULT_OPTIONS): PersonFacts {
@@ -159,9 +156,9 @@ export function personFacts(m: BirthMember, opts: EngineOptions = DEFAULT_OPTION
   const warnings: string[] = [];
   if (!hasTime) {
     // 시각 미상인데 출생일에 절입이 있으면 월주(와 입춘이면 년주)가 확정되지 않는다
-    const d0 = birth - 12 * 3_600_000; // 같은 날 00:00
+    const d0 = birth - 12 * MS_HOUR; // 같은 날 00:00
     const r0 = saju(d0, sOpts);
-    const r1 = saju(d0 + 23 * 3_600_000 + 59 * MS_MIN, sOpts);
+    const r1 = saju(d0 + 23 * MS_HOUR + 59 * MS_MIN, sOpts);
     if (r0.month[0] !== r1.month[0] || r0.month[1] !== r1.month[1]) {
       warnings.push("출생일에 절입이 있어 시각 없이는 월주가 확정되지 않음");
     }
@@ -227,7 +224,7 @@ export function personFacts(m: BirthMember, opts: EngineOptions = DEFAULT_OPTION
     cuspWarning: (lon % 30 < 1 || lon % 30 > 29) && !hasTime,
   };
 
-  const base: PersonFacts = {
+  return {
     name: m.name,
     gender: m.gender ?? null,
     hasTime,
@@ -256,16 +253,14 @@ export function personFacts(m: BirthMember, opts: EngineOptions = DEFAULT_OPTION
     seun: [],
     raw: r,
   };
-  return base;
 }
 
 /** 그해(양력 연도)의 세운 — 세운 간지, 신살, 십신, 원국과의 반응. */
 export function yearly(P: PersonFacts, year: number): SeunFact {
-  const idx = (((year - 1984) % 60) + 60) % 60;
+  const idx = mod(year - 1984, 60);
   const cg = CHEONGAN[idx % 10];
   const jj = JIJI[idx % 12];
-  const ig = P.ilgan.cg;
-  const ss = sipsin(CHEONGAN.indexOf(ig as (typeof CHEONGAN)[number]), idx % 10);
+  const ss = sipsin(cgIndex(P.ilgan.cg), idx % 10);
   const notes = [`세운 천간 ${josa(cg, "은", "는")} ${P.name}에게 ${ss}`];
   const items: SeunItem[] = [];
   for (const k of PILLAR_ORDER) {
@@ -294,7 +289,7 @@ export function currentDaewoon(P: PersonFacts, onYear: number): DaewoonFact | nu
   if (!P.gender) return null;
   const dw = daewoon(P.raw, P.gender);
   const age = onYear - fields(dayToMs(P.raw.solarDate)).year; // 대운수와 같은 '햇수' 기준
-  const igIdx = CHEONGAN.indexOf(P.ilgan.cg as (typeof CHEONGAN)[number]);
+  const igIdx = cgIndex(P.ilgan.cg);
   const steps = dw.seq.map((s) => ({
     fromAge: s.startAge,
     toAge: s.startAge + 9,
@@ -321,7 +316,7 @@ const JJ_MAIN: Record<string, string> = {
   자: "계", 축: "기", 인: "갑", 묘: "을", 진: "무", 사: "병", 오: "정", 미: "기", 신: "경", 유: "신", 술: "무", 해: "임",
 };
 export function branchMainStem(jj: string): number {
-  return CHEONGAN.indexOf(JJ_MAIN[jj] as (typeof CHEONGAN)[number]);
+  return cgIndex(JJ_MAIN[jj]);
 }
 
 /** 원국 + 대운 + 올해·내년 세운까지 채운 완성본. onYear 는 보통 올해(KST). */

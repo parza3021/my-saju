@@ -1,8 +1,8 @@
 import { glossaryRows } from "@/lib/engine/glossary";
 import { TableWrap } from "./ui";
 
-export default function Glossary({ only }: { only?: string[] }) {
-  const rows = glossaryRows().filter(([k]) => !only || only.some((o) => k.includes(o)));
+export default function Glossary() {
+  const rows = glossaryRows();
   return (
     <details className="rounded-2xl border border-white/10 bg-white/5 p-5">
       <summary className="cursor-pointer text-sm font-medium text-white/70 select-none">용어 풀이 (궁금할 때만 펼쳐 보세요)</summary>

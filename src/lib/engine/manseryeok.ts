@@ -193,10 +193,6 @@ export function dayGanzhiIndex(d: Day): number {
   return mod(jdn + 49, 60);
 }
 
-export function gz(cg: number, jj: number): string {
-  return `${CHEONGAN[cg]}${JIJI[jj]}(${CHEONGAN_HANJA[cg]}${JIJI_HANJA[jj]})`;
-}
-
 export function gzIndex(cg: number, jj: number): number {
   for (let n = 0; n < 60; n++) {
     if (n % 10 === cg && n % 12 === jj) return n;
@@ -455,8 +451,6 @@ export interface DaewoonResult {
   forward: boolean;
   /** 대운수(만 나이로 쓰는 시작 나이) */
   startAge: number;
-  /** 소수점 포함 정확한 시작 나이(년) */
-  exactAge: number;
   seq: DaewoonStep[];
 }
 
@@ -482,5 +476,5 @@ export function daewoon(result: RawSaju, gender: "M" | "F", count = 8): DaewoonR
     const n = mod(base + step * i, 60);
     seq.push({ startAge: su + 10 * (i - 1), cg: n % 10, jj: n % 12 });
   }
-  return { forward, startAge: su, exactAge: days / 3, seq };
+  return { forward, startAge: su, seq };
 }

@@ -1,17 +1,6 @@
 import { ZodiacResult } from "./types";
 
-interface ZodiacDef {
-  name: string;
-  hanja: string;
-  dateRange: string;
-  element: string;
-  keyword: string;
-  description: string;
-  start: [number, number]; // [month, day] inclusive start
-  end: [number, number]; // [month, day] inclusive end
-}
-
-const ZODIACS: ZodiacDef[] = [
+const ZODIACS: ZodiacResult[] = [
   {
     name: "물병자리",
     hanja: "水瓶座",
@@ -19,8 +8,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "바람",
     keyword: "독창성과 자유",
     description: "독립적인 사고와 개혁적인 아이디어를 중시하며, 틀에 얽매이지 않는 자유로운 기질을 지닙니다.",
-    start: [1, 20],
-    end: [2, 18],
   },
   {
     name: "물고기자리",
@@ -29,8 +16,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "물",
     keyword: "감수성과 상상력",
     description: "풍부한 감수성과 공감 능력을 지녔으며, 예술적 상상력과 직관이 뛰어난 편입니다.",
-    start: [2, 19],
-    end: [3, 20],
   },
   {
     name: "양자리",
@@ -39,8 +24,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "불",
     keyword: "추진력과 열정",
     description: "망설임 없이 행동으로 옮기는 추진력이 강점이며, 새로운 도전을 즐기는 열정적인 성향입니다.",
-    start: [3, 21],
-    end: [4, 19],
   },
   {
     name: "황소자리",
@@ -49,8 +32,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "흙",
     keyword: "안정과 끈기",
     description: "차분하고 꾸준한 태도로 목표를 이루어가며, 안정과 편안함을 중요하게 여깁니다.",
-    start: [4, 20],
-    end: [5, 20],
   },
   {
     name: "쌍둥이자리",
@@ -59,8 +40,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "바람",
     keyword: "호기심과 소통",
     description: "다방면에 호기심이 많고 언변이 뛰어나며, 새로운 정보와 사람을 만나는 것을 즐깁니다.",
-    start: [5, 21],
-    end: [6, 21],
   },
   {
     name: "게자리",
@@ -69,8 +48,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "물",
     keyword: "보호본능과 정서",
     description: "가족이나 가까운 사람을 세심하게 챙기는 보호 본능이 강하며, 정서적으로 깊은 유대를 중시합니다.",
-    start: [6, 22],
-    end: [7, 22],
   },
   {
     name: "사자자리",
@@ -79,8 +56,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "불",
     keyword: "자신감과 존재감",
     description: "뚜렷한 존재감과 자신감으로 주변을 이끄는 리더십을 지녔으며, 인정받는 것을 중요하게 여깁니다.",
-    start: [7, 23],
-    end: [8, 22],
   },
   {
     name: "처녀자리",
@@ -89,8 +64,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "흙",
     keyword: "분석력과 완벽주의",
     description: "꼼꼼한 분석력과 높은 기준을 지녔으며, 맡은 일을 완벽하게 마무리하려는 성향이 강합니다.",
-    start: [8, 23],
-    end: [9, 22],
   },
   {
     name: "천칭자리",
@@ -99,8 +72,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "바람",
     keyword: "균형과 조화",
     description: "관계 속의 균형과 조화를 중시하며, 공정하고 세련된 감각으로 사람들과 어울립니다.",
-    start: [9, 23],
-    end: [10, 23],
   },
   {
     name: "전갈자리",
@@ -109,8 +80,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "물",
     keyword: "집중력과 통찰",
     description: "한번 몰입하면 끝까지 파고드는 집중력과 날카로운 통찰력을 지녔으며, 감정이 깊고 진지합니다.",
-    start: [10, 24],
-    end: [11, 22],
   },
   {
     name: "사수자리",
@@ -119,8 +88,6 @@ const ZODIACS: ZodiacDef[] = [
     element: "불",
     keyword: "모험심과 낙천",
     description: "낙천적이고 자유로운 기질로 새로운 경험과 모험을 즐기며, 넓은 시야로 세상을 바라봅니다.",
-    start: [11, 23],
-    end: [12, 21],
   },
   {
     name: "염소자리",
@@ -129,18 +96,11 @@ const ZODIACS: ZodiacDef[] = [
     element: "흙",
     keyword: "책임감과 성실",
     description: "현실적이고 성실한 태도로 목표를 향해 꾸준히 나아가며, 책임감이 강하고 신중합니다.",
-    start: [12, 22],
-    end: [1, 19],
   },
 ];
-
-function toResult(def: ZodiacDef): ZodiacResult {
-  const { name, hanja, dateRange, element, keyword, description } = def;
-  return { name, hanja, dateRange, element, keyword, description };
-}
 
 export function zodiacByName(name: string): ZodiacResult {
   const def = ZODIACS.find((z) => z.name === name);
   if (!def) throw new Error(`별자리를 찾을 수 없습니다: ${name}`);
-  return toResult(def);
+  return def;
 }

@@ -4,7 +4,7 @@ import { WUXING_CONTENT } from "@/lib/content/wuxing";
 import { birthLabel, toDateInputValue, parseDateInput } from "@/lib/analysis";
 import { Day } from "@/lib/engine/clock";
 import { PersonFacts } from "@/lib/engine/natal";
-import { SIGN_ELEMENT_PLAIN, SIGN_MODALITY_PLAIN, SIPSIN_LUCK } from "@/lib/engine/plain";
+import { elKo, SIGN_ELEMENT_PLAIN, SIGN_MODALITY_PLAIN, SIPSIN_LUCK } from "@/lib/engine/plain";
 import { EL_ORDER } from "@/lib/engine/relations";
 import { DayView, supplementWuxing, summarizeWeek } from "@/lib/iljin";
 import { zodiacByName } from "@/lib/zodiac";
@@ -174,7 +174,7 @@ export default function ResultSection({
         <ZodiacCard zodiac={zodiac} />
         <p className="mt-3 text-xs text-white/45 leading-relaxed">
           태어난 순간 태양의 위치는 {person.sun.sign} {person.sun.degree}°(황경 {person.sun.longitude}°)입니다. 기질은 {SIGN_ELEMENT_PLAIN[person.sun.element]}
-          <Jargon>{person.sun.element === "공기" ? "바람" : person.sun.element}</Jargon>, 움직이는 방식은 {SIGN_MODALITY_PLAIN[person.sun.modality]}
+          <Jargon>{elKo(person.sun.element)}</Jargon>, 움직이는 방식은 {SIGN_MODALITY_PLAIN[person.sun.modality]}
           <Jargon>{person.sun.modality}</Jargon> 쪽입니다.
         </p>
       </Section>

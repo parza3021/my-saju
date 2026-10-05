@@ -3,7 +3,7 @@
 
 import type { PairEntry } from "../engine/group";
 import { PersonFacts } from "../engine/natal";
-import { POS, relPlain, relTag } from "../engine/plain";
+import { POS, relPlain, relTag, relTone } from "../engine/plain";
 import { BranchHit, gwa, josa, PILLAR_KO, PillarKey } from "../engine/relations";
 
 export type RelationKind = "연애" | "일" | "친구" | "가족";
@@ -95,13 +95,6 @@ export function isSameOnly(rel: string[]): boolean {
   return rel.every((r) => r === "동일");
 }
 
-export function toneOfRel(rel: string[]): InsightBullet["tone"] {
-  const names = rel.map((r) => r.split("(")[0]);
-  const good = names.some((n) => ["육합", "반합", "천간합"].includes(n));
-  const warn = names.some((n) => ["충", "형", "파", "해", "원진", "자형", "천간충"].includes(n));
-  return good && warn ? "mixed" : good ? "good" : warn ? "warn" : "neutral";
-}
-
 export function hitText(h: BranchHit, a: PersonFacts, b: PersonFacts): { text: string; tag: string } {
   const same = h.x === h.y;
   const where = same
@@ -133,7 +126,7 @@ export function describeRelationInsight(
     .filter((h) => p.keyPlaces.includes(h.x) || p.keyPlaces.includes(h.y))
     .map((h) => {
       const t = hitText(h, a, b);
-      return { tone: toneOfRel(h.rel), text: t.text, tag: t.tag };
+      return { tone: relTone(h.rel), text: t.text, tag: t.tag };
     });
   if (pair.facts.xy.ilganHap) bullets.unshift({ tone: "good", text: "두 사람의 '나' 글자끼리 서로 끌립니다.", tag: "일간합" });
   if (pair.facts.xy.ilganChung) bullets.unshift({ tone: "warn", text: "두 사람의 '나' 글자끼리 생각이 부딪힙니다.", tag: "일간충" });

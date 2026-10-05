@@ -1,6 +1,5 @@
 "use client";
 
-import { ymdOfDay } from "@/lib/engine/clock";
 import { BirthMember } from "@/lib/engine/natal";
 import { lunarToSolar } from "@/lib/engine/manseryeok";
 
@@ -47,8 +46,7 @@ export function personFormToMember(state: PersonFormState, fallbackName: string)
     if (probe.getUTCMonth() !== m - 1 || probe.getUTCDate() !== d) return null;
   } else {
     try {
-      const sd = ymdOfDay(lunarToSolar(y, m, d, state.isLeapMonth));
-      if (!sd.year) return null;
+      lunarToSolar(y, m, d, state.isLeapMonth);
     } catch {
       return null;
     }

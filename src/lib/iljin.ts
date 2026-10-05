@@ -44,18 +44,6 @@ export function supplementWuxing(P: PersonFacts): { element: Wuxing; color: stri
   return { element, color: WUXING_CONTENT[element].color };
 }
 
-export type ReactionTone = "good" | "warn" | "mixed" | "neutral";
-
-const GOOD = ["육합", "천간합", "반합"];
-const WARN = ["충", "천간충", "형", "파", "해", "원진", "자형"];
-
-export function reactionTone(rel: string[]): ReactionTone {
-  const names = rel.map((r) => r.split("(")[0]);
-  const g = names.some((n) => GOOD.includes(n));
-  const w = names.some((n) => WARN.includes(n));
-  return g && w ? "mixed" : g ? "good" : w ? "warn" : "neutral";
-}
-
 /** 반응 한 건을 쉬운 말로 — 예: "일하는 방식 자리(사)와 정면으로 부딪힘" + 전문 표기 */
 export function reactionText(r: Reaction, todayStem: string, todayBranch: string): { plain: string; tag: string } {
   const where = r.posKey === "day" && r.kind === "간" ? "나 자신" : POS_NAME[r.posKey];
@@ -137,5 +125,3 @@ export function summarizeWeek(days: DayView[]): WeekSummary {
     avgStars: Math.round((days.reduce((s, d) => s + d.facts.dayScore.stars, 0) / days.length) * 10) / 10,
   };
 }
-
-export const WEEKDAY_LABEL = "월화수목금토일";

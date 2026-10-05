@@ -134,6 +134,17 @@ export const STRUCT_EL: Record<string, string> = {
   수: "모이고 머무는",
 };
 
+/** 별자리 원소 표기 — 엔진의 '공기'를 화면에서는 '바람'으로 */
+export const elKo = (el: string) => (el === "공기" ? "바람" : el);
+
+/** 관계 목록의 성격: 끌림(good) · 부딪힘(warn) · 둘 다(mixed) · 그 외(neutral) */
+export function relTone(rel: string[]): "good" | "warn" | "mixed" | "neutral" {
+  const names = rel.map((r) => r.split("(")[0]);
+  const g = names.some((n) => ["육합", "천간합", "반합"].includes(n));
+  const w = names.some((n) => ["충", "천간충", "형", "파", "해", "원진", "자형"].includes(n));
+  return g && w ? "mixed" : g ? "good" : w ? "warn" : "neutral";
+}
+
 /** ['육합(수)', '형', '파'] → '서로 끌려 묶임, 서로 긁힘, 틈이 생김' */
 export function relPlain(relList: string[]): string {
   let names = relList.filter((r) => r !== "동일").map((r) => r.split("(")[0]);

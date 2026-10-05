@@ -1,17 +1,19 @@
 import { birthLabel } from "@/lib/analysis";
-import { hitText, isSameOnly, toneOfRel } from "@/lib/content/relationKind";
+import { hitText, isSameOnly } from "@/lib/content/relationKind";
 import { WUXING_CONTENT } from "@/lib/content/wuxing";
 import { GunghapResult } from "@/lib/gunghap";
 import { MatrixCell } from "@/lib/engine/group";
 import { PersonFacts } from "@/lib/engine/natal";
 import {
   ASPECT_PLAIN,
+  elKo,
   GILSIN,
   ILGAN_IMAGE,
   OHAENG,
   OHAENG_HANJA,
   POS,
   REL,
+  relTone,
   SIGN_ELEMENT_PLAIN,
   SIGN_MODALITY_PLAIN,
   SINSAL,
@@ -19,7 +21,6 @@ import {
   SIPSIN_LUCK,
   SIPSIN_PERSON,
   STARS,
-  STRUCT_EL,
   TWO_SYSTEMS_PLAIN,
 } from "@/lib/engine/plain";
 import { EL_ORDER, gwa, josa, PILLAR_KO, PosKo, Sinsal, Sipsin } from "@/lib/engine/relations";
@@ -31,11 +32,9 @@ import BasisFooter from "./saju/BasisFooter";
 import Glossary from "./saju/Glossary";
 import LuckTimeline, { SeunCard } from "./saju/LuckTimeline";
 import NatalDetails from "./saju/NatalDetails";
+import StructureLine from "./saju/StructureLine";
 import { Badge, Card, Disclosure, Jargon, Section, StarRating, TableWrap } from "./saju/ui";
 import ZodiacCard from "./ZodiacCard";
-
-const elName = (el: string) => (el === "공기" ? "바람" : el);
-const TONE = { good: "good", warn: "warn", mixed: "amber", neutral: "neutral" } as const;
 
 function PersonCard({ p }: { p: PersonFacts }) {
   const dominant = EL_ORDER.reduce((a, b) => (p.ohaeng[b] > p.ohaeng[a] ? b : a));
@@ -121,7 +120,7 @@ function verdictText(v: string, avg: number): string {
 export default function GunghapResultView({ result }: { result: GunghapResult }) {
   const { a, b, ab, ba, pair, insight, facts } = result;
   const avg = pair.sajuStars.avg;
-  const branchHits = pair.facts.xy.branch.filter((h) => !isSameOnly(h.rel)).map((h) => ({ h, tone: toneOfRel(h.rel), ...hitText(h, a, b) }));
+  const branchHits = pair.facts.xy.branch.filter((h) => !isSameOnly(h.rel)).map((h) => ({ h, tone: relTone(h.rel), ...hitText(h, a, b) }));
   const stemHits = pair.facts.xy.stemHits;
   const goodN = branchHits.filter((x) => x.tone === "good").length + stemHits.filter((s) => s.kind === "합").length;
   const warnN = branchHits.filter((x) => x.tone === "warn").length + stemHits.filter((s) => s.kind === "충").length;
@@ -157,7 +156,7 @@ export default function GunghapResultView({ result }: { result: GunghapResult })
             <div className="space-y-2">
               {insight.bullets.map((bl, i) => (
                 <div key={i} className="flex gap-2 items-start">
-                  <Badge tone={TONE[bl.tone]}>{bl.tone === "good" ? "끌림" : bl.tone === "warn" ? "부딪힘" : bl.tone === "mixed" ? "섞임" : "참고"}</Badge>
+                  <Badge tone={bl.tone}>{bl.tone === "good" ? "끌림" : bl.tone === "warn" ? "부딪힘" : bl.tone === "mixed" ? "섞임" : "참고"}</Badge>
                   <p className="text-sm text-white/70 leading-relaxed">
                     {bl.text}
                     {bl.tag && <Jargon>{bl.tag}</Jargon>}
@@ -196,20 +195,9 @@ export default function GunghapResultView({ result }: { result: GunghapResult })
           {group.structures.length > 0 ? (
             <div className="mt-4 space-y-2">
               <p className="text-xs text-white/45">서로 다른 사람이 가진 글자 세 개가 모이면, 혼자일 때는 없던 한 팀의 기운이 생깁니다.</p>
-              {group.structures.map((s) => {
-                const [head, who] = s.split(" — ");
-                const m = head.match(/^(삼합|방합|삼형) (\S+?)(?:\((.)\))?$/);
-                return (
-                  <div key={s} className="flex gap-2 items-start">
-                    <Badge tone={m?.[1] === "삼형" ? "warn" : "good"}>{m?.[1]}</Badge>
-                    <p className="text-sm text-white/70">
-                      {m?.[3] ? `${STRUCT_EL[m[3]]} 팀` : "서로 긁는 세 글자"}이 만들어집니다.
-                      <Jargon>{head}</Jargon>
-                      <span className="block text-xs text-white/40">{who.replace(/\//g, "·")}</span>
-                    </p>
-                  </div>
-                );
-              })}
+              {group.structures.map((s) => (
+                <StructureLine key={s} text={s} verb="이 만들어집니다." />
+              ))}
             </div>
           ) : (
             <p className="mt-3 text-sm text-white/55">두 사람의 글자만으로 완성되는 삼합·방합은 없습니다.</p>
@@ -226,7 +214,7 @@ export default function GunghapResultView({ result }: { result: GunghapResult })
           <DirectionCard from={b} to={a} cell={ba} />
         </div>
         <p className="mt-3 text-xs text-white/40 leading-relaxed">
-          {STARS[5] && [5, 4, 3, 2, 1].map((n) => `★${n} ${STARS[n]}`).join(" · ")}
+          {[5, 4, 3, 2, 1].map((n) => `★${n} ${STARS[n]}`).join(" · ")}
         </p>
       </Section>
 
@@ -251,7 +239,7 @@ export default function GunghapResultView({ result }: { result: GunghapResult })
           ))}
           {branchHits.map((x, i) => (
             <div key={`b${i}`} className="flex gap-2 items-start">
-              <Badge tone={TONE[x.tone]}>{x.h.rel.map((r) => r.split("(")[0]).join("·")}</Badge>
+              <Badge tone={x.tone}>{x.h.rel.map((r) => r.split("(")[0]).join("·")}</Badge>
               <p className="text-sm text-white/70 leading-relaxed">
                 {x.text}
                 <Jargon>{x.tag}</Jargon>
@@ -307,10 +295,10 @@ export default function GunghapResultView({ result }: { result: GunghapResult })
         <Card className="space-y-2">
           <p className="text-xs text-white/45">
             {a.name}: {a.sun.sign} {a.sun.degree}° · {SIGN_ELEMENT_PLAIN[a.sun.element]}
-            <Jargon>{elName(a.sun.element)}</Jargon> · {SIGN_MODALITY_PLAIN[a.sun.modality]}
+            <Jargon>{elKo(a.sun.element)}</Jargon> · {SIGN_MODALITY_PLAIN[a.sun.modality]}
             <br />
             {b.name}: {b.sun.sign} {b.sun.degree}° · {SIGN_ELEMENT_PLAIN[b.sun.element]}
-            <Jargon>{elName(b.sun.element)}</Jargon> · {SIGN_MODALITY_PLAIN[b.sun.modality]}
+            <Jargon>{elKo(b.sun.element)}</Jargon> · {SIGN_MODALITY_PLAIN[b.sun.modality]}
           </p>
           <p className="text-sm text-white/80 leading-relaxed">
             두 사람의 태양은 {sa.deg}° 떨어져 있습니다.

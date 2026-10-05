@@ -18,7 +18,6 @@ import {
   sinsal,
   Wuxing,
 } from "./relations";
-import { pyRound } from "./num";
 import { BirthMember, buildPerson, DEFAULT_OPTIONS, EngineOptions, PersonFacts } from "./natal";
 
 export interface MatrixCell extends ScoreResult {
@@ -44,23 +43,13 @@ export interface TrioFacts {
   missing: Wuxing[];
 }
 
-export interface TrioWithStars extends TrioFacts {
-  innerStars: Record<string, number>;
-  innerTotal: number;
-  innerAvg: number;
-  receivedInTrio: Record<string, number>;
-  hub: string[];
-}
-
 export interface GroupFacts {
   group: string;
   reportDate: string;
   basis: { lonCorrection: boolean; longitudeDefault: number; jasiMode: string };
   people: PersonFacts[];
   matrix: Record<string, MatrixCell>;
-  matrixSummary: { avg: number; received: Record<string, number>; given: Record<string, number> };
   pairs: Record<string, PairEntry>;
-  trios: TrioWithStars[];
   groupAll: TrioFacts;
 }
 
@@ -130,8 +119,6 @@ function* permutations2<T>(arr: T[]): Generator<[T, T]> {
   for (const x of arr) for (const y of arr) if (x !== y) yield [x, y];
 }
 
-const sumBy = <T,>(xs: T[], f: (x: T) => number) => xs.reduce((s, x) => s + f(x), 0);
-
 export function computeGroup(
   cfg: { group?: string; members: BirthMember[] },
   reportDate: string,
@@ -174,48 +161,13 @@ export function computeGroup(
     };
   }
 
-  const cells = Object.values(matrix);
-  const received = Object.fromEntries(
-    P.map((Y) => [Y.name, sumBy(P.filter((X) => X !== Y), (X) => matrix[`${X.name}→${Y.name}`].stars)])
-  );
-  const given = Object.fromEntries(
-    P.map((X) => [X.name, sumBy(P.filter((Y) => Y !== X), (Y) => matrix[`${X.name}→${Y.name}`].stars)])
-  );
-
-  const trios: TrioWithStars[] = [];
-  if (P.length >= 3) {
-    for (const c of combinations(P, 3)) {
-      const t = trioFacts(c);
-      const innerStars: Record<string, number> = {};
-      for (const [X, Y] of permutations2(c)) innerStars[`${X.name}→${Y.name}`] = matrix[`${X.name}→${Y.name}`].stars;
-      const recv = Object.fromEntries(
-        c.map((Y) => [
-          Y.name,
-          sumBy(Object.entries(innerStars).filter(([k]) => k.endsWith(`→${Y.name}`)), ([, v]) => v),
-        ])
-      );
-      const total = sumBy(Object.values(innerStars), (v) => v);
-      const maxRecv = Math.max(...Object.values(recv));
-      trios.push({
-        ...t,
-        innerStars,
-        innerTotal: total,
-        innerAvg: pyRound(total / 6, 2),
-        receivedInTrio: recv,
-        hub: Object.entries(recv).filter(([, v]) => v === maxRecv).map(([n]) => n),
-      });
-    }
-  }
-
   return {
     group: cfg.group ?? "",
     reportDate,
     basis: { lonCorrection: opts.lonCorrection, longitudeDefault: 127.0, jasiMode: opts.jasiMode },
     people: P,
     matrix,
-    matrixSummary: { avg: pyRound(sumBy(cells, (v) => v.stars) / cells.length, 2), received, given },
     pairs,
-    trios,
     groupAll: trioFacts(P),
   };
 }

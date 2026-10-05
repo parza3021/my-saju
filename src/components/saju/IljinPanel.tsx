@@ -1,30 +1,12 @@
 import { signOf } from "@/lib/engine/astro";
 import { PersonFacts } from "@/lib/engine/natal";
-import { ASPECT_PLAIN, GILSIN, SIGN_ELEMENT_PLAIN, SINSAL, SINSAL_HANJA, SIPSIN_LUCK, STRUCT_EL } from "@/lib/engine/plain";
-import { reactionText, reactionTone, DayView } from "@/lib/iljin";
+import { ASPECT_PLAIN, elKo, GILSIN, relTone, SIGN_ELEMENT_PLAIN, SINSAL, SINSAL_HANJA, SIPSIN_LUCK } from "@/lib/engine/plain";
+import { reactionText, DayView } from "@/lib/iljin";
 import { Wuxing } from "@/lib/engine/relations";
 import { Badge, Disclosure, Jargon, StarRating, TableWrap } from "./ui";
 import ElementBalance from "./ElementBalance";
 import EightCharGrid from "./EightCharGrid";
-
-const TONE_BADGE = { good: "good", warn: "warn", mixed: "amber", neutral: "neutral" } as const;
-
-function Structure({ text }: { text: string }) {
-  const [head, who] = text.split(" — ");
-  const m = head.match(/^(삼합|방합|삼형) (\S+?)(?:\((.)\))?$/);
-  const kind = m?.[1] ?? "";
-  const el = m?.[3];
-  return (
-    <div className="flex gap-2 items-start">
-      <Badge tone={kind === "삼형" ? "warn" : "good"}>{kind}</Badge>
-      <p className="text-sm text-white/70 leading-relaxed">
-        오늘 글자가 들어와 {el ? `${STRUCT_EL[el]} 팀` : "서로 긁는 세 글자"}가 완성됩니다.
-        <Jargon>{head}</Jargon>
-        <span className="block text-xs text-white/40">가진 글자: {who}</span>
-      </p>
-    </div>
-  );
-}
+import StructureLine from "./StructureLine";
 
 export default function IljinPanel({
   view,
@@ -107,7 +89,7 @@ export default function IljinPanel({
             const t = reactionText(r, g.cheongan, g.jiji);
             return (
               <div key={i} className="flex gap-2 items-start">
-                <Badge tone={TONE_BADGE[reactionTone(r.rel)]}>{r.rel.map((x) => x.split("(")[0]).join("·")}</Badge>
+                <Badge tone={relTone(r.rel)}>{r.rel.map((x) => x.split("(")[0]).join("·")}</Badge>
                 <p className="text-sm text-white/70 leading-relaxed">
                   {t.plain}
                   <Jargon>{t.tag}</Jargon>
@@ -116,7 +98,7 @@ export default function IljinPanel({
             );
           })}
           {facts.structures.map((s) => (
-            <Structure key={s} text={s} />
+            <StructureLine key={s} text={s} lead="오늘 글자가 들어와 " verb="가 완성됩니다." whoLabel="가진 글자: " />
           ))}
         </div>
       </div>
@@ -209,7 +191,7 @@ export default function IljinPanel({
             </p>
           ))}
           <p className="text-xs text-white/35">
-            나의 태양 별자리 기질: {SIGN_ELEMENT_PLAIN[person.sun.element]}({person.sun.element === "공기" ? "바람" : person.sun.element}). 달의 위치는 오차가 약 ±0.3°라 시각은 참고용입니다.
+            나의 태양 별자리 기질: {SIGN_ELEMENT_PLAIN[person.sun.element]}({elKo(person.sun.element)}). 달의 위치는 오차가 약 ±0.3°라 시각은 참고용입니다.
           </p>
         </div>
       </Disclosure>

@@ -1,16 +1,14 @@
-# Saju domain rules
+# Saju domain rules (engine)
 
-- Unknown birth time: compute with hour 12 (avoids 자시 day-boundary shifts) and set `time = null`; every consumer must skip 시주.
-- Day pillar for any calendar date (일진) = `calculateSaju` on that solar date at 12:00.
-- Western zodiac always uses converted `solarBirth`, even for lunar input.
-- 십신 = `getShiShen(dayMaster, stem)` from 오행 생극 + 음양 (same polarity → 비견/식신/편재/편관/편인). Matches lunar-javascript output.
-- 궁합 (`branchRelations.ts`):
-  - Pair relations only across people (person1 지지 × person2 지지): 육합, 충, 원진, 子卯 무례지형, 자형 (same branch in 辰午酉亥).
-  - 삼합/삼형 count only if both people contribute ≥1 branch; 반합 only when the full 삼합 is absent.
-  - 파(破) intentionally excluded — its classical pairs overlap/contradict 육합.
-  - No numeric scores in UI; summary uses counts of 긍정/주의 hits.
-- 일진 (`iljin.ts`):
-  - Day 지지 vs each of my pillars: 육합/충/원진 only. Pillar → life area: 년=대외, 월=직장·사회, 일=나·가까운 사람, 시=아랫사람·개인 일과.
-  - Internal score (never displayed): 십신 score + 육합 +2 / 충 −2 / 원진 −1; ≥2 순조, ≤−1 주의, else 보통.
-  - Week = Monday–Sunday containing the selected date. Tone = dominant 십신 group (pairs in `SHI_SHEN_ORDER`); tie → "혼재".
-  - Wording switches "오늘" / "이 날" by `isToday`.
+- 원국: 태양 겉보기 황경(VSOP87 + 장동·광행차, ΔT). 연주 = 입춘(315°) 순간 기준, 월주 = 출생 순간이 속한 절 구간 + 오호둔.
+- 일·시주: 경도 보정(동경 127° ≈ KST−32분) 후 판정. 자시 기본 `unified`(정자시 통합: 23시 이후 다음 날 일주).
+- 한국 시간대 이력: 1954-03-21~1961-08-09(및 1908~1911) UTC+8:30, 서머타임 1948~51·1955~60·1987~88 반영.
+- 시각 모름: 12:00으로 계산하고 시주 생략. 출생일에 절입/입춘이 있으면 경고(월주·년주 미확정).
+- 음력 → 양력: 자체 합삭+중기 계산(KST), 윤달 지원. 없는 달/일은 예외 → 폼에서 null 처리.
+- 지지 관계(`branchRelations`): 술–미는 파만(형 아님). 반합은 삼합 왕지(자·오·묘·유)가 낀 두 글자만. 형 = 인사신·축술미 쌍 + 자묘. 자형 = 진·오·유·해 같은 글자.
+- 별점 `score(X, Y)`: 3 + 십신 기본점 ± 일간 천간합/충(±1) + 일지끼리 관계(육합 +1, 반합 +0.5, 충 −1.5, 형·파·해·원진·자형 −0.5) + 나머지 자리(합 +0.25·충 −0.5·기타 −0.25, 각 상한) + 상대가 내 귀인 자리 +0.5 → 반올림, 1~5.
+- 일진 별점: 그날을 "일주 하나뿐인 가상 인물"로 두고 같은 `score()`. 등급: ★≥4 순조, ★≤2 주의, 그 외 보통.
+- 주간: 선택일이 속한 월~일. 기조 = 그날 십신을 두 개씩 계열(비겁·식상·재성·관성·인성)로 묶어 최다 계열, 동점이면 "혼재".
+- 대운: 성별 필요(양남음녀 순행). 대운수 = 절입까지 일수/3 반올림(최소 1).
+- 궁합: `computeGroup`을 2명으로 호출 → 방향별 별점 행렬, 쌍 구조, 모인 기운(`groupAll`). 3명 이상 조합(trios)·행렬 요약은 앱이 쓰지 않아 제거됨. 한 사람이 혼자 다 가진 삼합 등은 "관계"가 아니므로 제외.
+- 관계 종류 풀이(`content/relationKind.ts`): 종류별 중요 자리(연애 일·시, 일 월·일, 친구 일·월, 가족 년·일)의 반응만 강조. 문장은 계산 결과에서만 만든다.

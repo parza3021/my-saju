@@ -1,7 +1,7 @@
 // 천체 계산 보조 — compute_iljin.py 의 달 황경 · sky · 시진표 · 절기 이식.
 // 달 황경은 Meeus 47장 주요항(오차 약 ±0.3°)이라 "정확해지는 시각"은 분 단위로 읽지 않는다.
 
-import { Day, dayToMs, hhmm, KST, Ms, MS_DAY, MS_MIN } from "./clock";
+import { Day, dayToMs, hhmm, KST, mod, Ms, MS_DAY, MS_MIN, pad2 } from "./clock";
 import {
   CHEONGAN,
   dayGanzhiIndex,
@@ -15,8 +15,7 @@ import {
 import { ASPECTS, SIGNS } from "./relations";
 import { pyRound } from "./num";
 
-const mod = (a: number, b: number) => ((a % b) + b) % b;
-const rad = (d: number) => (d * Math.PI) / 180;
+const rad =(d: number) => (d * Math.PI) / 180;
 
 /** 달 황경(저정밀, Meeus 47장 주요항). */
 export function moonLongitudeUtc(tUtc: Ms): number {
@@ -98,14 +97,13 @@ export function yearMonthPillars(day: Day): { year: string; month: string; jieNa
 // ---------------------------------------------------------------- 시진표 (경도보정 127°E: 평균태양시 = KST − 32분)
 export function hourTable(day: Day): { jiji: string; pillar: string; kst: string }[] {
   const dayCg = dayGanzhiIndex(day) % 10;
-  const p2 = (n: number) => String(n).padStart(2, "0");
   return Array.from({ length: 12 }, (_, h) => {
     const cg = (OSEODUN[dayCg] + h) % 10;
     const start = (23 + 2 * h) % 24;
     return {
       jiji: JIJI[h],
       pillar: CHEONGAN[cg] + JIJI[h],
-      kst: `${p2(start)}:32~${p2((start + 2) % 24)}:32` + (h === 0 ? " (전날 밤부터)" : ""),
+      kst: `${pad2(start)}:32~${pad2((start + 2) % 24)}:32` + (h === 0 ? " (전날 밤부터)" : ""),
     };
   });
 }
@@ -124,14 +122,7 @@ export interface SkyFacts {
   moon: number;
   sunAspect: { diff: number; aspect: string | null; orb: number | null };
   moonEvents: MoonEvent[];
-  sunEvents: string[];
-  moon00: number;
-  moon24: number;
-  sun00: number;
-  sun24: number;
   moonIngress: [string, string] | null;
-  elong00: number;
-  elong24: number;
 }
 
 export function sky(day: Day, natalSunLon: number, hourKst = 9.0): SkyFacts {
@@ -169,20 +160,6 @@ export function sky(day: Day, natalSunLon: number, hourKst = 9.0): SkyFacts {
     }
   }
 
-  const m0 = moonLongitudeUtc(start);
-  const m24 = moonLongitudeUtc(start + MS_DAY);
-  const s0 = solarLongitudeUtc(start);
-  const s24 = solarLongitudeUtc(start + MS_DAY);
-
-  // 태양 각의 오브 진입·이탈(그날 안에서)
-  const sunEvents: string[] = [];
-  let prev: string | null | "-" = "-";
-  for (const s of steps) {
-    const [a] = aspectOfDiff(angleDiff(solarLongitudeUtc(s), natalSunLon));
-    if (prev !== "-" && a !== prev) sunEvents.push(`${hhmm(s + KST)} ` + (a ? `${a} 오브 진입` : `${prev} 오브 이탈`));
-    prev = a;
-  }
-
   // 달 궁 이동
   let ingress: [string, string] | null = null;
   for (let i = 1; i < steps.length; i++) {
@@ -191,19 +168,6 @@ export function sky(day: Day, natalSunLon: number, hourKst = 9.0): SkyFacts {
     if (a !== b) ingress = [hhmm(steps[i] + KST), signOf(moonLongitudeUtc(steps[i]))[0]];
   }
 
-  return {
-    sun,
-    moon,
-    sunAspect,
-    moonEvents,
-    sunEvents,
-    moon00: m0,
-    moon24: m24,
-    sun00: s0,
-    sun24: s24,
-    moonIngress: ingress,
-    elong00: mod(m0 - s0, 360),
-    elong24: mod(m24 - s24, 360),
-  };
+  return { sun, moon, sunAspect, moonEvents, moonIngress: ingress };
 }
 

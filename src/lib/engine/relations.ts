@@ -6,6 +6,7 @@
 //   - 반합: 삼합의 가운데 글자(자·오·묘·유)가 들어간 두 글자만. 해미·인술·사축·신진은 반합이 아니다.
 //   - 별점: reference/group/scoring.md 공식(score).
 
+import { mod } from "./clock";
 import { CHEONGAN, JIJI } from "./manseryeok";
 import { pyRound } from "./num";
 
@@ -101,9 +102,8 @@ export function gwa(word: string): "과" | "와" {
   return josa(word, "과", "와").slice(-1) as "과" | "와";
 }
 
-const mod = (a: number, b: number) => ((a % b) + b) % b;
-const cgIndex = (cg: string) => CHEONGAN.indexOf(cg as (typeof CHEONGAN)[number]);
-const jjIndex = (jj: string) => JIJI.indexOf(jj as (typeof JIJI)[number]);
+export const cgIndex = (cg: string) => CHEONGAN.indexOf(cg as (typeof CHEONGAN)[number]);
+export const jjIndex = (jj: string) => JIJI.indexOf(jj as (typeof JIJI)[number]);
 
 export type Sipsin = "비견" | "겁재" | "식신" | "상관" | "편재" | "정재" | "편관" | "정관" | "편인" | "정인";
 

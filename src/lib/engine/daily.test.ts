@@ -40,10 +40,7 @@ describe("일진 계산이 compute_iljin.py 와 같다", () => {
       expect(f.ohaeng.total).toBe(c.ohaeng.total);
       for (const [el, row] of Object.entries<any>(c.ohaeng.rows)) {
         const got = f.ohaeng.rows[el as "목"];
-        expect(
-          { prev: got.prev, today: got.today, out: got.out, in: got.in, unchangedDays: got.unchangedDays, changedAfterDays: got.changedAfterDays },
-          el
-        ).toEqual({ prev: row.prev, today: row.today, out: row.out, in: row.in, unchangedDays: row.unchanged_days, changedAfterDays: row.changed_after_days });
+        expect(got, el).toEqual({ prev: row.prev, today: row.today, out: row.out, in: row.in });
       }
 
       expect(f.dayScore).toEqual(c.dayScore);
@@ -55,10 +52,7 @@ describe("일진 계산이 compute_iljin.py 와 같다", () => {
       expect(s.moonEvents.map((e) => ({ aspect: e.aspect, from: e.from, to: e.to, exact: e.exact, minOrb: e.minOrb }))).toEqual(
         c.sky.moonEvents.map((e: any) => ({ aspect: e.aspect, from: e.from, to: e.to, exact: e.exact, minOrb: e.min_orb }))
       );
-      expect(s.sunEvents).toEqual(c.sky.sunEvents);
       expect(s.moonIngress?.map(norm) ?? null).toEqual(c.sky.moonIngress?.map(norm) ?? null);
-      expect(Math.abs(s.elong00 - c.sky.elong00)).toBeLessThan(1e-6);
-      expect(Math.abs(s.elong24 - c.sky.elong24)).toBeLessThan(1e-6);
     });
   }
 });

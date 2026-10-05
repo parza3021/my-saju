@@ -60,7 +60,6 @@ describe("만세력 엔진 이식", () => {
           const want = c.daewoon[g];
           expect(dw.forward).toBe(want.forward);
           expect(dw.startAge).toBe(want.startAge);
-          expect(Math.abs(dw.exactAge - want.exactAge)).toBeLessThan(0.01);
           expect(dw.seq.map((s) => [s.startAge, s.cg, s.jj])).toEqual(want.seq);
         }
       });
