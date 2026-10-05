@@ -15,6 +15,8 @@ import BasisFooter from "./saju/BasisFooter";
 import IljinPanel from "./saju/IljinPanel";
 import LuckTimeline from "./saju/LuckTimeline";
 import NatalDetails from "./saju/NatalDetails";
+import ShareButton from "./saju/ShareButton";
+import { drawSajuCard } from "./saju/shareCard";
 import { Card, Jargon, Section } from "./saju/ui";
 import WeeklyFortune from "./WeeklyFortune";
 import ZodiacCard from "./ZodiacCard";
@@ -46,7 +48,10 @@ export default function ResultSection({
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
-      <Section title="사주팔자 원국">
+      <Section
+        title="사주팔자 원국"
+        right={<ShareButton fileName={`my-saju-${person.name}.png`} draw={(ctx) => drawSajuCard(ctx, person)} />}
+      >
         <Card>
           <p className="text-sm text-white/55 mb-4">
             <b className="text-amber-300">{person.name}</b> · {birthLabel(person)}

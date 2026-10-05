@@ -32,6 +32,8 @@ import BasisFooter from "./saju/BasisFooter";
 import Glossary from "./saju/Glossary";
 import LuckTimeline, { SeunCard } from "./saju/LuckTimeline";
 import NatalDetails from "./saju/NatalDetails";
+import ShareButton from "./saju/ShareButton";
+import { drawGunghapCard } from "./saju/shareCard";
 import StructureLine from "./saju/StructureLine";
 import { Badge, Card, Disclosure, Jargon, Section, StarRating, TableWrap } from "./saju/ui";
 import ZodiacCard from "./ZodiacCard";
@@ -128,7 +130,10 @@ export default function GunghapResultView({ result }: { result: GunghapResult })
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
-      <Section title="총평">
+      <Section
+        title="총평"
+        right={<ShareButton fileName={`my-saju-궁합-${a.name}-${b.name}.png`} draw={(ctx) => drawGunghapCard(ctx, result)} />}
+      >
         <Card className="space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
             <StarRating stars={Math.round(avg)} size="text-2xl" />
